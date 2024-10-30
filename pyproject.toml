@@ -1,0 +1,87 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "monkay"
+dynamic = ["version"]
+description = 'The ultimate preload, settings, lazy import manager.'
+readme = "README.md"
+requires-python = ">=3.9"
+license = "MIT"
+keywords = []
+authors = [
+  { name = "alex", email = "devkral@web.de" },
+]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: Implementation :: CPython",
+  "Programming Language :: Python :: Implementation :: PyPy",
+]
+dependencies = []
+
+[project.optional-dependencies]
+settings = [
+  "pydantic-settings"
+]
+
+[project.urls]
+Documentation = "https://github.com/devkral/monkay#readme"
+Issues = "https://github.com/devkral/monkay/issues"
+Source = "https://github.com/devkral/monkay"
+
+[tool.hatch.version]
+path = "monkay/__about__.py"
+
+[tool.hatch.envs.default]
+dependencies = [
+  "click"
+]
+
+[tool.hatch.envs.types]
+extra-dependencies = [
+  "mypy>=1.0.0",
+]
+[tool.hatch.envs.types.scripts]
+check = "mypy --install-types --non-interactive {args:monkay tests}"
+
+[tool.coverage.run]
+source_pkgs = ["monkay", "tests"]
+branch = true
+parallel = true
+omit = [
+  "monkay/__about__.py",
+]
+
+[tool.coverage.paths]
+monkay = ["monkay", "*/monkay/monkay"]
+tests = ["tests", "*/monkay/tests"]
+
+[tool.coverage.report]
+exclude_lines = [
+  "no cov",
+  "if __name__ == .__main__.:",
+  "if TYPE_CHECKING:",
+]
+
+[ruff]
+line-length = 99
+fix = true
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "C", "B", "I", "UP", "SIM"]
+ignore = ["E501", "B008", "C901", "B026", "SIM115"]
+
+[tool.ruff.lint.pycodestyle]
+max-line-length = 99
+max-doc-length = 120
+
+[[tool.mypy.overrides]]
+module = "monkay.tests.*"
+ignore_missing_imports = true
+check_untyped_defs = true

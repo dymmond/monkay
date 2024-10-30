@@ -1,0 +1,29 @@
+# folders
+*.egg-info/
+.hypothesis/
+.idea/
+.mypy_cache/
+.pytest_cache/
+.ruff
+.tox/
+.venv/
+venv/
+.vscode/
+__pycache__/
+virtualenv/
+build/
+dist/
+node_modules/
+results/
+
+# files
+**/*.so
+*.sqlite
+*.iml
+.DS_Store
+.coverage
+.coverage.*
+.python-version
+coverage.*
+docker-compose.override.yml
+compose.override.yml
