@@ -57,7 +57,7 @@ extra-dependencies = [
   "mypy>=1.0.0",
 ]
 [tool.hatch.envs.types.scripts]
-check = "mypy --install-types --non-interactive monkay {args}"
+check = "mypy monkay {args}"
 
 
 [tool.hatch.envs.hatch-test]

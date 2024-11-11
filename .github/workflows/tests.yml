@@ -28,6 +28,6 @@ jobs:
       - name: "Run linting"
         run: "hatch fmt --check"
       - name: "Run mypy"
-        run: "hatch run types:check --cache-dir=.mypy_cache/"
+        run: "hatch run types:check"
       - name: "Run tests"
         run: "hatch test"
