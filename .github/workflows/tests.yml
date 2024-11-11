@@ -1,0 +1,33 @@
+name: Test Suite
+
+on:
+  push:
+    branches:
+      - "**"
+jobs:
+  tests:
+    name: "Python ${{ matrix.python-version }}"
+    runs-on: "ubuntu-latest"
+    strategy:
+      matrix:
+        python-version: ["3.9", "3.10", "3.11", "3.12"]
+    steps:
+      - uses: "actions/checkout@v4"
+      - uses: "actions/setup-python@v5"
+        with:
+          python-version: "${{ matrix.python-version }}"
+          allow-prereleases: true
+      - uses: actions/cache@v4
+        id: cache
+        with:
+          path: ${{ env.pythonLocation }}
+          key: ${{ runner.os }}-python-${{ env.pythonLocation }}-${{ hashFiles('pyproject.toml') }}-hatch
+      - name: "Install dependencies"
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: "pip install hatch"
+      - name: "Run linting"
+        run: "hatch fmt --check-only"
+      - name: "Run mypy"
+        run: "hatch run types:check"
+      - name: "Run tests"
+        run: "hatch test"

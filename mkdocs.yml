@@ -4,3 +4,5 @@ site_url: https://devkral.github.io/monkay
 
 nav:
   - Home: index.md
+  - Tutorial: tutorial.md
+  - Helpers: helpers.md

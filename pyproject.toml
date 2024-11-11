@@ -40,12 +40,8 @@ path = "monkay/__about__.py"
 
 [tool.hatch.envs.default]
 dependencies = [
-  "click",
   "pydantic_settings"
 ]
-
-[tool.hatch.envs.default.scripts]
-monkay = "python -m monkay {args}"
 
 [tool.hatch.envs.docs]
 dependencies = [
@@ -105,4 +101,5 @@ max-doc-length = 120
 [[tool.mypy.overrides]]
 module = "tests.*"
 ignore_missing_imports = true
-check_untyped_defs = false
+check_untyped_defs = true
+ignore_errors = true

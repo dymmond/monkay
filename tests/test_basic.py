@@ -4,7 +4,7 @@ from io import StringIO
 
 import pytest
 
-from monkay import Monkay
+from monkay import Monkay, load, load_any
 
 
 @pytest.fixture(autouse=True, scope="function")
@@ -53,6 +53,34 @@ def test_attrs():
     )
 
 
+def test_load_any():
+    assert load_any("tests.targets.fn_module", ["not_existing", "bar"]) is not None
+    with pytest.warns(DeprecationWarning) as records:
+        assert (
+            load_any(
+                "tests.targets.fn_module",
+                ["not_existing", "bar"],
+                non_first_deprecated=True,
+            )
+            is not None
+        )
+    assert (
+        load_any(
+            "tests.targets.fn_module",
+            ["bar", "not_existing"],
+            non_first_deprecated=True,
+        )
+        is not None
+    )
+    assert str(records[0].message) == '"bar" is deprecated, use "not_existing" instead.'
+    with pytest.raises(ImportError):
+        assert load_any("tests.targets.fn_module", ["not-existing"]) is None
+    with pytest.raises(ImportError):
+        assert load_any("tests.targets.fn_module", []) is None
+    with pytest.raises(ImportError):
+        load_any("tests.targets.not_existing", ["bar"])
+
+
 def test_extensions(capsys):
     import tests.targets.module_full as mod
     from tests.targets.extension import NonExtension
@@ -65,7 +93,7 @@ def test_extensions(capsys):
     captured_out = capsys.readouterr().out
     assert captured_out == "settings_extension1 called\nsettings_extension2 called\n"
     with pytest.raises(ValueError):
-        mod.monkay.add_extension(NonExtension(name="foo"))
+        mod.monkay.add_extension(NonExtension(name="foo"))  # type: ignore
     assert capsys.readouterr().out == ""
 
     # order

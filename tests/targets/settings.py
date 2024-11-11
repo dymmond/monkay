@@ -15,8 +15,6 @@ class SettingsExtension:
 class Settings(BaseSettings):
     preloads: list[str] = ["tests.targets.module_preloaded1"]
     extensions: list[Any] = [
-        lambda: load("tests.targets.extension:Extension")[1](
-            name="settings_extension1"
-        ),
+        lambda: load("tests.targets.extension:Extension")(name="settings_extension1"),
         SettingsExtension,
     ]

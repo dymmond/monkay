@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import warnings
-from collections.abc import Callable, Iterable, Sequence
+from collections.abc import Callable, Generator, Iterable, Sequence
 from contextlib import contextmanager
 from contextvars import ContextVar
 from functools import cached_property, partial
@@ -15,6 +15,7 @@ from typing import (
     Protocol,
     TypedDict,
     TypeVar,
+    cast,
     runtime_checkable,
 )
 
@@ -26,30 +27,42 @@ L = TypeVar("L")
 
 class DeprecatedImport(TypedDict):
     path: str
-    reason: str = "-"
-    new_attribute: str = ""
+    reason: str
+    new_attribute: str
 
 
-def load(path: str, allow_splits: str = ":.") -> tuple[Any, Any]:
+def load(path: str, allow_splits: str = ":.") -> Any:
     splitted = path.rsplit(":", 1) if ":" in allow_splits else []
     if len(splitted) < 2 and "." in allow_splits:
         splitted = path.rsplit(".", 1)
     if len(splitted) != 2:
         raise ValueError(f"invalid path: {path}")
     module = import_module(splitted[0])
-    return module, getattr(module, splitted[1])
+    return getattr(module, splitted[1])
 
 
-def multi_load(path: str, attrs: Iterable[str]) -> tuple[Any, Any] | None:
+def load_any(
+    path: str, attrs: Sequence[str], *, non_first_deprecated: bool = False
+) -> Any | None:
     module = import_module(path)
+    first_name: None | str = None
+
     for attr in attrs:
         if hasattr(module, attr):
-            return module, getattr(module, attr)
-    return None
+            if non_first_deprecated and first_name is not None:
+                warnings.warn(
+                    f'"{attr}" is deprecated, use "{first_name}" instead.',
+                    DeprecationWarning,
+                    stacklevel=2,
+                )
+            return getattr(module, attr)
+        if first_name is None:
+            first_name = attr
+    raise ImportError(f"Could not import any of the attributes:.{', '.join(attrs)}")
 
 
 @runtime_checkable
-class ExtensionProtocol(Protocol, Generic[L]):
+class ExtensionProtocol(Protocol[L]):
     name: str
 
     def apply(self, monkay_instance: Monkay[L]) -> None: ...
@@ -62,7 +75,8 @@ def _stub_previous_getattr(name: str) -> Any:
 class Monkay(Generic[L]):
     _instance: None | L = None
     _instance_var: ContextVar[L | None] | None = None
-    _extensions: None | dict[str, ExtensionProtocol[L]] = None
+    # extensions are pretended to always exist, we check the _extensions_var
+    _extensions: dict[str, ExtensionProtocol[L]]
     _extensions_var: None | ContextVar[None | dict[str, ExtensionProtocol[L]]] = None
     _extensions_applied: None | ContextVar[dict[str, ExtensionProtocol[L]] | None] = (
         None
@@ -77,7 +91,7 @@ class Monkay(Generic[L]):
         with_extensions: str | bool = False,
         extension_order_key_fn: None | Callable[[ExtensionProtocol[L]], Any] = None,
         settings_path: str = "",
-        preloads: Sequence[str] = (),
+        preloads: Iterable[str] = (),
         settings_preload_name: str = "",
         settings_extensions_name: str = "",
         lazy_imports: dict[str, str] | None = None,
@@ -93,14 +107,14 @@ class Monkay(Generic[L]):
             with_extensions = "monkay_extensions_ctx"
         with_extensions = with_extensions
 
-        self._cache_imports = {}
+        self._cache_imports: dict[str, Any] = {}
         self.lazy_imports = lazy_imports or {}
         self.deprecated_lazy_imports = deprecated_lazy_imports or {}
         assert set(
-            lazy_imports
+            self.lazy_imports
         ).isdisjoint(
             self.deprecated_lazy_imports
-        ), f"Lazy imports and lazy deprecated imports share: {', '.join(set(lazy_imports).intersection(self.deprecated_lazy_imports))}"
+        ), f"Lazy imports and lazy deprecated imports share: {', '.join(set(self.lazy_imports).intersection(self.deprecated_lazy_imports))}"
         self.settings_path = settings_path
         if self.settings_path:
             self._settings_var = global_dict[settings_ctx_name] = ContextVar(
@@ -112,7 +126,7 @@ class Monkay(Generic[L]):
 
         self._handle_preloads(preloads)
         if self.lazy_imports or self.deprecated_lazy_imports:
-            getter: Callable[[str], Any] = self.module_getter
+            getter: Callable[..., Any] = self.module_getter
             if "__getattr__" in global_dict:
                 getter = partial(getter, chained_getter=global_dict["__getattr__"])
             global_dict["__getattr__"] = getter
@@ -135,7 +149,7 @@ class Monkay(Generic[L]):
             self._handle_extensions()
 
     @property
-    def instance(self) -> L:
+    def instance(self) -> L | None:
         assert self._instance_var is not None, "Monkay not enabled for instances"
         instance: L | None = self._instance_var.get()
         if instance is None:
@@ -162,7 +176,7 @@ class Monkay(Generic[L]):
         instance: L | None,
         apply_extensions: bool = False,
         use_extension_overwrite: bool = True,
-    ) -> None:
+    ) -> Generator:
         assert self._instance_var is not None, "Monkay not enabled for instances"
         # need to address before the instance is swapped
         if apply_extensions and self._extensions_applied_var.get() is not None:
@@ -177,19 +191,24 @@ class Monkay(Generic[L]):
 
     def apply_extensions(self, use_overwrite: bool = True) -> None:
         assert self._extensions_var is not None, "Monkay not enabled for extensions"
-        extensions: L | None = self._extensions_var.get() if use_overwrite else None
+        extensions: dict[str, ExtensionProtocol[L]] | None = (
+            self._extensions_var.get() if use_overwrite else None
+        )
         if extensions is None:
             extensions = self._extensions
         extensions_applied = self._extensions_applied_var.get()
         if extensions_applied is not None:
             raise RuntimeError("Other apply process in the same context is active.")
-        if self.extension_order_key_fn is None:
-            extensions_ordered = extensions.items()
-        else:
+        extensions_ordered: Iterable[tuple[str, ExtensionProtocol[L]]] = cast(
+            dict[str, ExtensionProtocol[L]], extensions
+        ).items()
+
+        if self.extension_order_key_fn is not None:
             extensions_ordered = sorted(
-                extensions.items(), key=self.extension_order_key_fn
+                extensions_ordered,
+                key=self.extension_order_key_fn,  # type:  ignore
             )
-        extensions_applied: set[str] = set()
+        extensions_applied = set()
         token = self._extensions_applied_var.set(extensions_applied)
         try:
             for name, extension in extensions_ordered:
@@ -201,15 +220,22 @@ class Monkay(Generic[L]):
             self._extensions_applied_var.reset(token)
 
     def ensure_extension(self, name_or_extension: str | ExtensionProtocol[L]) -> None:
-        extensions: L | None = self._extensions_var.get()
+        assert self._extensions_var is not None, "Monkay not enabled for extensions"
+        extensions: dict[str, ExtensionProtocol[L]] | None = self._extensions_var.get()
         if extensions is None:
             extensions = self._extensions
         if isinstance(name_or_extension, str):
             name = name_or_extension
             extension = extensions.get(name)
-        else:
+        elif not isclass(name_or_extension) and isinstance(
+            name_or_extension, ExtensionProtocol
+        ):
             name = name_or_extension.name
             extension = extensions.get(name, name_or_extension)
+        else:
+            raise RuntimeError(
+                'Provided extension "{name_or_extension}" does not implement the ExtensionProtocol'
+            )
         if name in self._extensions_applied_var.get():
             return
 
@@ -226,7 +252,9 @@ class Monkay(Generic[L]):
         use_overwrite: bool = True,
     ) -> None:
         assert self._extensions_var is not None, "Monkay not enabled for extensions"
-        extensions: L | None = self._extensions_var.get() if use_overwrite else None
+        extensions: dict[str, ExtensionProtocol[L]] | None = (
+            self._extensions_var.get() if use_overwrite else None
+        )
         if extensions is None:
             extensions = self._extensions
         if callable(extension) or isclass(extension):
@@ -240,7 +268,7 @@ class Monkay(Generic[L]):
         self,
         extensions: dict[str, ExtensionProtocol[L]] | None,
         apply_extensions: bool = False,
-    ) -> None:
+    ) -> Generator:
         assert self._extensions_var is not None, "Monkay not enabled for extensions"
         token = self._extensions_var.set(extensions)
         try:
@@ -263,7 +291,7 @@ class Monkay(Generic[L]):
 
     @cached_property
     def _settings(self) -> BaseSettings:
-        settings: Any = load(self.settings_path)[1]
+        settings: Any = load(self.settings_path)
         if isclass(settings):
             settings = settings()
         return settings
@@ -277,7 +305,7 @@ class Monkay(Generic[L]):
         return settings
 
     @contextmanager
-    def with_settings(self, settings: BaseSettings | None) -> None:
+    def with_settings(self, settings: BaseSettings | None) -> Generator:
         assert self._settings_var is not None, "Monkay not enabled for settings"
         token = self._settings_var.set(settings)
         try:
@@ -303,7 +331,7 @@ class Monkay(Generic[L]):
         if lazy_import is None:
             return chained_getter(key)
         if key not in self._cache_imports:
-            self._cache_imports[key] = load(lazy_import)[1]
+            self._cache_imports[key] = load(lazy_import)
         return self._cache_imports[key]
 
     def _handle_preloads(self, preloads: Iterable[str]) -> None:
