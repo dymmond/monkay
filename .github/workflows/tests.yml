@@ -26,7 +26,7 @@ jobs:
         if: steps.cache.outputs.cache-hit != 'true'
         run: "pip install hatch"
       - name: "Run linting"
-        run: "hatch fmt --check-only"
+        run: "hatch fmt --check"
       - name: "Run mypy"
         run: "hatch run types:check"
       - name: "Run tests"

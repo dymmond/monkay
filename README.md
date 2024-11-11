@@ -12,7 +12,7 @@
 
 ## Installation
 
-```console
+```shell
 pip install monkay
 ```
 
