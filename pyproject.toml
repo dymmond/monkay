@@ -43,6 +43,10 @@ dependencies = [
   "click",
   "pydantic_settings"
 ]
+
+[tool.hatch.envs.default.scripts]
+monkay = "python -m monkay {args}"
+
 [tool.hatch.envs.docs]
 dependencies = [
   "mkdocs",
@@ -58,6 +62,14 @@ extra-dependencies = [
 ]
 [tool.hatch.envs.types.scripts]
 check = "mypy --install-types --non-interactive {args:monkay tests}"
+
+
+[tool.hatch.envs.hatch-test]
+extra-dependencies = [
+  "click",
+  "pydantic_settings"
+]
+
 
 [tool.coverage.run]
 source_pkgs = ["monkay", "tests"]

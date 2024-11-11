@@ -8,7 +8,6 @@ from functools import cached_property, partial
 from importlib import import_module
 from inspect import isclass
 from itertools import chain
-from threading import Lock
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -53,7 +52,7 @@ def multi_load(path: str, attrs: Iterable[str]) -> tuple[Any, Any] | None:
 class ExtensionProtocol(Protocol, Generic[L]):
     name: str
 
-    def apply(self, app: L) -> None: ...
+    def apply(self, monkay_instance: Monkay[L]) -> None: ...
 
 
 def _stub_previous_getattr(name: str) -> Any:
@@ -61,42 +60,40 @@ def _stub_previous_getattr(name: str) -> Any:
 
 
 class Monkay(Generic[L]):
-    monkays: dict[str, Monkay] = {}
-    monkays_global_lock: Lock = Lock()
-    instance: None | L = None
-    instance_var: ContextVar[L | None] | None = None
-    extensions: None | dict[str, ExtensionProtocol[L]] = None
-    extensions_var: None | ContextVar[None | dict[str, ExtensionProtocol[L]]] = None
+    _instance: None | L = None
+    _instance_var: ContextVar[L | None] | None = None
+    _extensions: None | dict[str, ExtensionProtocol[L]] = None
+    _extensions_var: None | ContextVar[None | dict[str, ExtensionProtocol[L]]] = None
+    _extensions_applied: None | ContextVar[dict[str, ExtensionProtocol[L]] | None] = (
+        None
+    )
+    _settings_var: ContextVar[BaseSettings | None] | None = None
 
     def __init__(
         self,
         global_dict: dict,
         *,
-        name: str = "",
-        license: str = "",
         with_instance: str | bool = False,
         with_extensions: str | bool = False,
-        register: bool | None = None,
+        extension_order_key_fn: None | Callable[[ExtensionProtocol[L]], Any] = None,
         settings_path: str = "",
         preloads: Sequence[str] = (),
         settings_preload_name: str = "",
         settings_extensions_name: str = "",
         lazy_imports: dict[str, str] | None = None,
         deprecated_lazy_imports: dict[str, DeprecatedImport] | None = None,
+        settings_ctx_name: str = "monkay_settings_ctx",
+        extensions_applied_ctx_name: str = "monkay_extensions_applied_ctx",
+        skip_all_update: bool = False,
     ) -> None:
-        self.name = name or global_dict["__spec__"].name.split(".", 1)[0]
         if with_instance is True:
             with_instance = "monkay_instance_ctx"
-        self.with_instance = with_instance
+        with_instance = with_instance
         if with_extensions is True:
             with_extensions = "monkay_extensions_ctx"
-        self.with_extensions = with_extensions
-        if register is None:
-            register = self.name == global_dict["__name__"]
+        with_extensions = with_extensions
 
         self._cache_imports = {}
-        self.module = global_dict["__spec__"].name
-        self.license = license
         self.lazy_imports = lazy_imports or {}
         self.deprecated_lazy_imports = deprecated_lazy_imports or {}
         assert set(
@@ -104,6 +101,12 @@ class Monkay(Generic[L]):
         ).isdisjoint(
             self.deprecated_lazy_imports
         ), f"Lazy imports and lazy deprecated imports share: {', '.join(set(lazy_imports).intersection(self.deprecated_lazy_imports))}"
+        self.settings_path = settings_path
+        if self.settings_path:
+            self._settings_var = global_dict[settings_ctx_name] = ContextVar(
+                settings_ctx_name, default=None
+            )
+
         self.settings_preload_name = settings_preload_name
         self.settings_extensions_name = settings_extensions_name
 
@@ -113,63 +116,119 @@ class Monkay(Generic[L]):
             if "__getattr__" in global_dict:
                 getter = partial(getter, chained_getter=global_dict["__getattr__"])
             global_dict["__getattr__"] = getter
-            all_var = global_dict.setdefault("__all__", [])
-            global_dict["__all__"] = self.update_all_var(all_var)
-        if register:
-            # now try to register as global instance
-            with self.monkays_global_lock:
-                if self.name not in self.monkays:
-                    self.monkays[self.name] = self
-        if self.with_instance:
-            self.instance_var = global_dict[self.with_instance] = ContextVar(
-                self.with_instance, default=None
+            if not skip_all_update:
+                all_var = global_dict.setdefault("__all__", [])
+                global_dict["__all__"] = self.update_all_var(all_var)
+        if with_instance:
+            self._instance_var = global_dict[with_instance] = ContextVar(
+                with_instance, default=None
             )
-        if self.with_extensions:
-            self.extensions = {}
-            self.extensions_var = global_dict[self.with_extensions] = ContextVar(
-                self.with_extensions, default=None
+        if with_extensions:
+            self.extension_order_key_fn = extension_order_key_fn
+            self._extensions = {}
+            self._extensions_var = global_dict[with_extensions] = ContextVar(
+                with_extensions, default=None
+            )
+            self._extensions_applied_var = global_dict[extensions_applied_ctx_name] = (
+                ContextVar(extensions_applied_ctx_name, default=None)
             )
             self._handle_extensions()
 
-    def get_instance(self) -> L:
-        assert self.instance_var is not None, "Monkay not enabled for instances"
-        instance: L | None = self.instance_var.get()
+    @property
+    def instance(self) -> L:
+        assert self._instance_var is not None, "Monkay not enabled for instances"
+        instance: L | None = self._instance_var.get()
         if instance is None:
-            instance = self.instance
+            instance = self._instance
         return instance
 
-    def set_instance(self, instance: L) -> None:
-        assert self.instance_var is not None, "Monkay not enabled for instances"
-        self.instance = instance
+    def set_instance(
+        self,
+        instance: L,
+        apply_extensions: bool = True,
+        use_extension_overwrite: bool = True,
+    ) -> None:
+        assert self._instance_var is not None, "Monkay not enabled for instances"
+        # need to address before the instance is swapped
+        if apply_extensions and self._extensions_applied_var.get() is not None:
+            raise RuntimeError("Other apply process in the same context is active.")
+        self._instance = instance
+        if apply_extensions and self._extensions_var is not None:
+            self.apply_extensions(use_overwrite=use_extension_overwrite)
 
     @contextmanager
-    def with_instance(self, instance: L) -> None:
-        assert self.instance_var is not None, "Monkay not enabled for instances"
-        token = self.instance_var.set(instance)
+    def with_instance(
+        self,
+        instance: L | None,
+        apply_extensions: bool = False,
+        use_extension_overwrite: bool = True,
+    ) -> None:
+        assert self._instance_var is not None, "Monkay not enabled for instances"
+        # need to address before the instance is swapped
+        if apply_extensions and self._extensions_applied_var.get() is not None:
+            raise RuntimeError("Other apply process in the same context is active.")
+        token = self._instance_var.set(instance)
         try:
+            if apply_extensions and self._extensions_var is not None:
+                self.apply_extensions(use_overwrite=use_extension_overwrite)
             yield
         finally:
-            self.instance_var.reset(token)
+            self._instance_var.reset(token)
 
-    def apply_extensions(self, instance: L, use_overwrite: bool = True) -> None:
-        assert self.extensions_var is not None, "Monkay not enabled for extensions"
-        extensions: L | None = self.extensions_var.get() if use_overwrite else None
+    def apply_extensions(self, use_overwrite: bool = True) -> None:
+        assert self._extensions_var is not None, "Monkay not enabled for extensions"
+        extensions: L | None = self._extensions_var.get() if use_overwrite else None
         if extensions is None:
-            extensions = self.extensions
-        for extension in extensions:
-            extension.apply(instance)
+            extensions = self._extensions
+        extensions_applied = self._extensions_applied_var.get()
+        if extensions_applied is not None:
+            raise RuntimeError("Other apply process in the same context is active.")
+        if self.extension_order_key_fn is None:
+            extensions_ordered = extensions.items()
+        else:
+            extensions_ordered = sorted(
+                extensions.items(), key=self.extension_order_key_fn
+            )
+        extensions_applied: set[str] = set()
+        token = self._extensions_applied_var.set(extensions_applied)
+        try:
+            for name, extension in extensions_ordered:
+                if name in extensions_applied:
+                    continue
+                extensions_applied.add(name)
+                extension.apply(self)
+        finally:
+            self._extensions_applied_var.reset(token)
 
-    def add_extensions(
+    def ensure_extension(self, name_or_extension: str | ExtensionProtocol[L]) -> None:
+        extensions: L | None = self._extensions_var.get()
+        if extensions is None:
+            extensions = self._extensions
+        if isinstance(name_or_extension, str):
+            name = name_or_extension
+            extension = extensions.get(name)
+        else:
+            name = name_or_extension.name
+            extension = extensions.get(name, name_or_extension)
+        if name in self._extensions_applied_var.get():
+            return
+
+        if extension is None:
+            raise RuntimeError(f'Extension: "{name}" does not exist.')
+        self._extensions_applied_var.get().add(name)
+        extension.apply(self)
+
+    def add_extension(
         self,
         extension: ExtensionProtocol[L]
         | type[ExtensionProtocol[L]]
         | Callable[[], ExtensionProtocol[L]],
         use_overwrite: bool = True,
     ) -> None:
-        assert self.extensions_var is not None, "Monkay not enabled for extensions"
-        extensions: L | None = self.extensions_var.get() if use_overwrite else None
+        assert self._extensions_var is not None, "Monkay not enabled for extensions"
+        extensions: L | None = self._extensions_var.get() if use_overwrite else None
         if extensions is None:
-            extensions = self.extensions
+            extensions = self._extensions
         if callable(extension) or isclass(extension):
             extension = extension()
         if not isinstance(extension, ExtensionProtocol):
@@ -177,13 +236,17 @@ class Monkay(Generic[L]):
         extensions[extension.name] = extension
 
     @contextmanager
-    def with_extensions(self, extensions: dict[str, ExtensionProtocol[L]]) -> None:
-        assert self.extensions_var is not None, "Monkay not enabled for extensions"
-        token = self.extensions_var.set(extensions)
+    def with_extensions(
+        self,
+        extensions: dict[str, ExtensionProtocol[L]] | None,
+        apply_extensions: bool = False,
+    ) -> None:
+        assert self._extensions_var is not None, "Monkay not enabled for extensions"
+        token = self._extensions_var.set(extensions)
         try:
             yield
         finally:
-            self.extensions_var.reset(token)
+            self._extensions_var.reset(token)
 
     def update_all_var(self, all_var: Sequence[str]) -> list[str]:
         if not isinstance(all_var, list):
@@ -199,13 +262,28 @@ class Monkay(Generic[L]):
         return all_var
 
     @cached_property
-    def setttings(self) -> BaseSettings:
-        return load(self.settings_path)[1]
+    def _settings(self) -> BaseSettings:
+        settings: Any = load(self.settings_path)[1]
+        if isclass(settings):
+            settings = settings()
+        return settings
 
-    @classmethod
-    def licenses(cls) -> dict[str, str]:
-        # with cls.monkays_global_lock:
-        return {key: val.license for key, val in cls.monkays.items()}
+    @property
+    def settings(self) -> BaseSettings:
+        assert self._settings_var is not None, "Monkay not enabled for settings"
+        settings = self._settings_var.get()
+        if settings is None:
+            settings = self._settings
+        return settings
+
+    @contextmanager
+    def with_settings(self, settings: BaseSettings | None) -> None:
+        assert self._settings_var is not None, "Monkay not enabled for settings"
+        token = self._settings_var.set(settings)
+        try:
+            yield
+        finally:
+            self._settings_var.reset(token)
 
     def module_getter(
         self, key: str, *, chained_getter: Callable[[str], Any] = _stub_previous_getattr
@@ -214,13 +292,13 @@ class Monkay(Generic[L]):
         if lazy_import is None:
             deprecated = self.deprecated_lazy_imports.get(key)
             if deprecated is not None:
-                lazy_import = deprecated.path
+                lazy_import = deprecated["path"]
                 warn_strs = [f'Attribute: "{key}" is deprecated.']
-                if deprecated["reason"]:
+                if deprecated.get("reason"):
                     warn_strs.append(f"Reason: {deprecated["reason"]}.")
-                if deprecated["new_attribute"]:
+                if deprecated.get("new_attribute"):
                     warn_strs.append(f'Use "{deprecated["new_attribute"]}" instead.')
-                warnings.warn("\n".joiN(warn_strs), DeprecationWarning, stacklevel=2)
+                warnings.warn("\n".join(warn_strs), DeprecationWarning, stacklevel=2)
 
         if lazy_import is None:
             return chained_getter(key)
@@ -242,7 +320,7 @@ class Monkay(Generic[L]):
             if module is not None and len(splitted) == 2:
                 getattr(module, splitted[1])()
 
-    def _handle_extensions(self, preloads: Iterable[str]) -> None:
+    def _handle_extensions(self) -> None:
         if self.settings_extensions_name:
             for extension in getattr(self.settings, self.settings_extensions_name):
-                self.add_extensions(extension, use_overwrite=False)
+                self.add_extension(extension, use_overwrite=False)
