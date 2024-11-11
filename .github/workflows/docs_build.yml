@@ -37,7 +37,7 @@ jobs:
       - name: "Install hatch"
         run: "pip install hatch"
       - name: Build Pages
-        run "hatch run docs:build"
+        run: "hatch run docs:build"
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
