@@ -40,8 +40,17 @@ path = "monkay/__about__.py"
 
 [tool.hatch.envs.default]
 dependencies = [
-  "click"
+  "click",
+  "pydantic_settings"
 ]
+[tool.hatch.envs.docs]
+dependencies = [
+  "mkdocs",
+]
+[tool.hatch.envs.docs.scripts]
+build = "mkdocs build"
+serve = "mkdocs serve --dev-addr localhost:8000"
+
 
 [tool.hatch.envs.types]
 extra-dependencies = [
@@ -82,6 +91,6 @@ max-line-length = 99
 max-doc-length = 120
 
 [[tool.mypy.overrides]]
-module = "monkay.tests.*"
+module = "tests.*"
 ignore_missing_imports = true
-check_untyped_defs = true
+check_untyped_defs = false
