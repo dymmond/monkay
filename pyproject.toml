@@ -9,7 +9,7 @@ description = 'The ultimate preload, settings, lazy import manager.'
 readme = "README.md"
 requires-python = ">=3.9"
 license = "MIT"
-keywords = []
+keywords = ["monkey-patching", "settings", "lazy-imports"]
 authors = [
   { name = "alex", email = "devkral@web.de" },
 ]
