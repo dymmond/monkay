@@ -53,6 +53,15 @@ def test_attrs():
     )
 
 
+def test_load():
+    assert load("tests.targets.fn_module.bar") is not None
+    assert load("tests.targets.fn_module:bar") is not None
+    with pytest.raises(ValueError):
+        assert load("tests.targets.fn_module.bar", allow_splits=":") is not None
+    with pytest.raises(AttributeError):
+        assert load("tests.targets.fn_module:bar", allow_splits=".") is not None
+
+
 def test_load_any():
     assert load_any("tests.targets.fn_module", ["not_existing", "bar"]) is not None
     with pytest.warns(DeprecationWarning) as records:
