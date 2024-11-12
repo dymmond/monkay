@@ -6,10 +6,12 @@
 
 - `find_missing` test method.
 - `getter` attribute saving the injected getter.
+- `absolutify_import` helper.
 
 ### Changed
 
 - Rename typo `settings_preload_name` to `settings_preloads_name`.
+- Fix relative imports.
 
 ## Version 0.0.3
 

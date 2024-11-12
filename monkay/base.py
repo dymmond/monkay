@@ -87,14 +87,37 @@ def _obj_to_full_name(obj: Any) -> str:
     return f"{obj.__module__}.{obj.__qualname__}"
 
 
+def absolutify_import(import_path: str, package: str | None) -> str:
+    if not package or not import_path:
+        return import_path
+    dot_count: int = 0
+    try:
+        while import_path[dot_count] == ".":
+            dot_count += 1
+    except IndexError:
+        raise ValueError("not an import path") from None
+    if dot_count == 0:
+        return import_path
+    if dot_count - 2 > package.count("."):
+        raise ValueError("Out of bound, tried to cross parent.")
+    if dot_count > 1:
+        package = package.rsplit(".", dot_count - 1)[0]
+
+    return f"{package}.{import_path.lstrip('.')}"
+
+
 class Monkay(Generic[INSTANCE, SETTINGS]):
     getter: Callable[..., Any]
     _instance: None | INSTANCE = None
     _instance_var: ContextVar[INSTANCE | None] | None = None
     # extensions are pretended to always exist, we check the _extensions_var
     _extensions: dict[str, ExtensionProtocol[INSTANCE, SETTINGS]]
-    _extensions_var: None | ContextVar[None | dict[str, ExtensionProtocol[INSTANCE, SETTINGS]]] = None
-    _extensions_applied: None | ContextVar[dict[str, ExtensionProtocol[INSTANCE, SETTINGS]] | None] = None
+    _extensions_var: (
+        None | ContextVar[None | dict[str, ExtensionProtocol[INSTANCE, SETTINGS]]]
+    ) = None
+    _extensions_applied: (
+        None | ContextVar[dict[str, ExtensionProtocol[INSTANCE, SETTINGS]] | None]
+    ) = None
     _settings_var: ContextVar[SETTINGS | None] | None = None
 
     def __init__(
@@ -103,7 +126,8 @@ class Monkay(Generic[INSTANCE, SETTINGS]):
         *,
         with_instance: str | bool = False,
         with_extensions: str | bool = False,
-        extension_order_key_fn: None | Callable[[ExtensionProtocol[INSTANCE, SETTINGS]], Any] = None,
+        extension_order_key_fn: None
+        | Callable[[ExtensionProtocol[INSTANCE, SETTINGS]], Any] = None,
         settings_path: str = "",
         preloads: Iterable[str] = (),
         settings_preload_name: str = "",
@@ -124,7 +148,7 @@ class Monkay(Generic[INSTANCE, SETTINGS]):
             with_extensions = "monkay_extensions_ctx"
         with_extensions = with_extensions
         if package == "" and global_dict.get("__spec__"):
-            package = global_dict["__spec__"].name
+            package = global_dict["__spec__"].parent
         self.package = package or None
 
         self._cached_imports: dict[str, Any] = {}
@@ -139,7 +163,9 @@ class Monkay(Generic[INSTANCE, SETTINGS]):
                 self.add_deprecated_lazy_import(name, deprecated_import)
         self.settings_path = settings_path
         if self.settings_path:
-            self._settings_var = global_dict[settings_ctx_name] = ContextVar(settings_ctx_name, default=None)
+            self._settings_var = global_dict[settings_ctx_name] = ContextVar(
+                settings_ctx_name, default=None
+            )
 
         if settings_preload_name:
             warnings.warn(
@@ -162,17 +188,23 @@ class Monkay(Generic[INSTANCE, SETTINGS]):
                 all_var = global_dict.setdefault("__all__", [])
                 global_dict["__all__"] = self.update_all_var(all_var)
         if with_instance:
-            self._instance_var = global_dict[with_instance] = ContextVar(with_instance, default=None)
+            self._instance_var = global_dict[with_instance] = ContextVar(
+                with_instance, default=None
+            )
         if with_extensions:
             self.extension_order_key_fn = extension_order_key_fn
             self._extensions = {}
-            self._extensions_var = global_dict[with_extensions] = ContextVar(with_extensions, default=None)
-            self._extensions_applied_var = global_dict[extensions_applied_ctx_name] = ContextVar(
-                extensions_applied_ctx_name, default=None
+            self._extensions_var = global_dict[with_extensions] = ContextVar(
+                with_extensions, default=None
+            )
+            self._extensions_applied_var = global_dict[extensions_applied_ctx_name] = (
+                ContextVar(extensions_applied_ctx_name, default=None)
             )
             self._handle_extensions()
 
-    def clear_caches(self, settings_cache: bool = True, import_cache: bool = True) -> None:
+    def clear_caches(
+        self, settings_cache: bool = True, import_cache: bool = True
+    ) -> None:
         if settings_cache:
             self.__dict__.pop("_settings", None)
         if import_cache:
@@ -211,7 +243,11 @@ class Monkay(Generic[INSTANCE, SETTINGS]):
     ) -> Generator:
         assert self._instance_var is not None, "Monkay not enabled for instances"
         # need to address before the instance is swapped
-        if apply_extensions and self._extensions_var is not None and self._extensions_applied_var.get() is not None:
+        if (
+            apply_extensions
+            and self._extensions_var is not None
+            and self._extensions_applied_var.get() is not None
+        ):
             raise RuntimeError("Other apply process in the same context is active.")
         token = self._instance_var.set(instance)
         try:
@@ -231,9 +267,9 @@ class Monkay(Generic[INSTANCE, SETTINGS]):
         extensions_applied = self._extensions_applied_var.get()
         if extensions_applied is not None:
             raise RuntimeError("Other apply process in the same context is active.")
-        extensions_ordered: Iterable[tuple[str, ExtensionProtocol[INSTANCE, SETTINGS]]] = cast(
-            dict[str, ExtensionProtocol[INSTANCE, SETTINGS]], extensions
-        ).items()
+        extensions_ordered: Iterable[
+            tuple[str, ExtensionProtocol[INSTANCE, SETTINGS]]
+        ] = cast(dict[str, ExtensionProtocol[INSTANCE, SETTINGS]], extensions).items()
 
         if self.extension_order_key_fn is not None:
             extensions_ordered = sorted(
@@ -251,19 +287,27 @@ class Monkay(Generic[INSTANCE, SETTINGS]):
         finally:
             self._extensions_applied_var.reset(token)
 
-    def ensure_extension(self, name_or_extension: str | ExtensionProtocol[INSTANCE, SETTINGS]) -> None:
+    def ensure_extension(
+        self, name_or_extension: str | ExtensionProtocol[INSTANCE, SETTINGS]
+    ) -> None:
         assert self._extensions_var is not None, "Monkay not enabled for extensions"
-        extensions: dict[str, ExtensionProtocol[INSTANCE, SETTINGS]] | None = self._extensions_var.get()
+        extensions: dict[str, ExtensionProtocol[INSTANCE, SETTINGS]] | None = (
+            self._extensions_var.get()
+        )
         if extensions is None:
             extensions = self._extensions
         if isinstance(name_or_extension, str):
             name = name_or_extension
             extension = extensions.get(name)
-        elif not isclass(name_or_extension) and isinstance(name_or_extension, ExtensionProtocol):
+        elif not isclass(name_or_extension) and isinstance(
+            name_or_extension, ExtensionProtocol
+        ):
             name = name_or_extension.name
             extension = extensions.get(name, name_or_extension)
         else:
-            raise RuntimeError('Provided extension "{name_or_extension}" does not implement the ExtensionProtocol')
+            raise RuntimeError(
+                'Provided extension "{name_or_extension}" does not implement the ExtensionProtocol'
+            )
         if name in self._extensions_applied_var.get():
             return
 
@@ -358,22 +402,31 @@ class Monkay(Generic[INSTANCE, SETTINGS]):
                 ]
             ],
         ] = {}
-        key_set = set(chain(self.lazy_imports.keys(), self.deprecated_lazy_imports.keys()))
+        key_set = set(
+            chain(self.lazy_imports.keys(), self.deprecated_lazy_imports.keys())
+        )
         value_pathes_set: set[str] = set()
         for name in key_set:
-            was_set: bool = False
+            found_path: str = ""
             if name in self.lazy_imports and isinstance(self.lazy_imports[name], str):
-                value_pathes_set.add(cast(str, self.lazy_imports[name]).replace(":", "."))
-                was_set = True
-            elif name in self.deprecated_lazy_imports and isinstance(self.deprecated_lazy_imports[name]["path"], str):
-                value_pathes_set.add(cast(str, self.deprecated_lazy_imports[name]["path"]).replace(":", "."))
-                was_set = True
+                found_path = cast(str, self.lazy_imports[name]).replace(":", ".")
+            elif name in self.deprecated_lazy_imports and isinstance(
+                self.deprecated_lazy_imports[name]["path"], str
+            ):
+                found_path = cast(
+                    str, self.deprecated_lazy_imports[name]["path"]
+                ).replace(":", ".")
+            if found_path:
+                value_pathes_set.add(absolutify_import(found_path, self.package))
             try:
                 returnobj = self.getter(name, no_warn_deprecated=True)
-                if not was_set:
+                if not found_path:
                     value_pathes_set.add(_obj_to_full_name(returnobj))
             except ImportError:
-                if not ignore_deprecated_import_errors or name not in self.deprecated_lazy_imports:
+                if (
+                    not ignore_deprecated_import_errors
+                    or name not in self.deprecated_lazy_imports
+                ):
                     missing.setdefault(name, set()).add("import")
         if search_pathes:
             for search_path in search_pathes:
@@ -386,11 +439,15 @@ class Monkay(Generic[INSTANCE, SETTINGS]):
                     all_var_search = mod.__all__
                 except AttributeError:
                     if require_search_path_all_var:
-                        missing.setdefault(search_path, set()).add("search_path_all_var")
+                        missing.setdefault(search_path, set()).add(
+                            "search_path_all_var"
+                        )
 
                     continue
                 for export_name in all_var_search:
-                    export_path = f"{search_path}.{export_name}"
+                    export_path = absolutify_import(
+                        f"{search_path}.{export_name}", self.package
+                    )
                     if export_path not in value_pathes_set:
                         missing.setdefault(export_path, set()).add("search_path_extra")
         if all_var is not None:
@@ -468,8 +525,12 @@ class Monkay(Generic[INSTANCE, SETTINGS]):
                     if deprecated.get("reason"):
                         warn_strs.append(f"Reason: {deprecated['reason']}.")
                     if deprecated.get("new_attribute"):
-                        warn_strs.append(f'Use "{deprecated["new_attribute"]}" instead.')
-                    warnings.warn("\n".join(warn_strs), DeprecationWarning, stacklevel=2)
+                        warn_strs.append(
+                            f'Use "{deprecated["new_attribute"]}" instead.'
+                        )
+                    warnings.warn(
+                        "\n".join(warn_strs), DeprecationWarning, stacklevel=2
+                    )
 
         if lazy_import is None:
             return chained_getter(key)
@@ -486,7 +547,9 @@ class Monkay(Generic[INSTANCE, SETTINGS]):
 
     def _handle_preloads(self, preloads: Iterable[str]) -> None:
         if self.settings_preloads_name:
-            preloads = chain(preloads, getattr(self.settings, self.settings_preloads_name))
+            preloads = chain(
+                preloads, getattr(self.settings, self.settings_preloads_name)
+            )
         for preload in preloads:
             splitted = preload.rsplit(":", 1)
             try:
