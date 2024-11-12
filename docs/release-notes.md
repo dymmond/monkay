@@ -7,6 +7,10 @@
 - `find_missing` test method.
 - `getter` attribute saving the injected getter.
 
+### Changed
+
+- Rename typo `settings_preload_name` to `settings_preloads_name`.
+
 ## Version 0.0.3
 
 ### Added
