@@ -12,7 +12,6 @@ def __getattr__(name: str):
 
 class FakeApp:
     is_fake_app: bool = True
-    pass
 
 
 monkay = Monkay(
@@ -23,7 +22,12 @@ monkay = Monkay(
     preloads=["tests.targets.module_full_preloaded1:load"],
     settings_preload_name="preloads",
     settings_extensions_name="extensions",
-    lazy_imports={"bar": "tests.targets.fn_module:bar"},
+    uncached_imports=["settings"],
+    lazy_imports={
+        "bar": "tests.targets.fn_module:bar",
+        "dynamic": lambda: "dynamic",
+        "settings": lambda: monkay.settings,
+    },
     deprecated_lazy_imports={
         "deprecated": {
             "path": "tests.targets.fn_module:deprecated",
