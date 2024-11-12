@@ -93,6 +93,7 @@ class Monkay(Generic[INSTANCE, SETTINGS]):
         settings_path: str = "",
         preloads: Iterable[str] = (),
         settings_preload_name: str = "",
+        settings_preloads_name: str = "",
         settings_extensions_name: str = "",
         uncached_imports: Iterable[str] = (),
         lazy_imports: dict[str, str | Callable[[], Any]] | None = None,
@@ -122,7 +123,15 @@ class Monkay(Generic[INSTANCE, SETTINGS]):
         if self.settings_path:
             self._settings_var = global_dict[settings_ctx_name] = ContextVar(settings_ctx_name, default=None)
 
-        self.settings_preload_name = settings_preload_name
+        if settings_preload_name:
+            warnings.warn(
+                'The "settings_preload_name" parameter is deprecated use "settings_preloads_name" instead.',
+                DeprecationWarning,
+                stacklevel=2,
+            )
+        if not settings_preloads_name and settings_preload_name:
+            settings_preloads_name = settings_preload_name
+        self.settings_preloads_name = settings_preloads_name
         self.settings_extensions_name = settings_extensions_name
 
         self._handle_preloads(preloads)
@@ -366,8 +375,8 @@ class Monkay(Generic[INSTANCE, SETTINGS]):
         return self._cached_imports[key]
 
     def _handle_preloads(self, preloads: Iterable[str]) -> None:
-        if self.settings_preload_name:
-            preloads = chain(preloads, getattr(self.settings, self.settings_preload_name))
+        if self.settings_preloads_name:
+            preloads = chain(preloads, getattr(self.settings, self.settings_preloads_name))
         for preload in preloads:
             splitted = preload.rsplit(":", 1)
             try:

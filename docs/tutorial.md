@@ -6,7 +6,7 @@
 
 ``` shell
 pip install monkay
-# or
+# or with pydantic_settings
 # pip install monkay[settings]
 ```
 
@@ -24,7 +24,7 @@ monkay = Monkay(
     with_instance=True,
     settings_path="settings_path:Settings",
     preloads=["tests.targets.module_full_preloaded1:load"],
-    settings_preload_name="preloads",
+    settings_preloads_name="preloads",
     settings_extensions_name="extensions",
     uncached_imports=["settings"],
     lazy_imports={
@@ -96,7 +96,7 @@ monkay = Monkay(
     with_extensions=True,
     with_instance=True,
     settings_path=os.environ.get("MONKAY_SETTINGS", "example.default.path.settings:Settings"),
-    settings_preload_name="preloads",
+    settings_preloads_name="preloads",
     settings_extensions_name="extensions",
     uncached_imports=["settings"],
     lazy_imports={"settings": lambda: monkay.settings}
@@ -138,7 +138,7 @@ monkay = Monkay(
     with_extensions=True,
     with_instance=True,
     settings_path=os.environ.get("MONKAY_SETTINGS", "example.default.path.settings:settings"),
-    settings_preload_name="preloads",
+    settings_preloads_name="preloads",
     settings_extensions_name="extensions",
 )
 ```
@@ -191,7 +191,7 @@ monkay = Monkay(
     with_extensions=True,
     with_instance=True,
     settings_path=os.environ.get("MONKAY_SETTINGS", "example.default.path.settings:settings"),
-    settings_preload_name="preloads",
+    settings_preloads_name="preloads",
     settings_extensions_name="extensions",
 )
 
