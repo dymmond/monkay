@@ -15,6 +15,8 @@ pip install monkay
 Probably in the main `__init__.py` you define something like this:
 
 ``` python
+from monkay import Monkay
+
 monkay = Monkay(
     # required for autohooking
     globals(),
@@ -24,7 +26,11 @@ monkay = Monkay(
     preloads=["tests.targets.module_full_preloaded1:load"],
     settings_preload_name="preloads",
     settings_extensions_name="extensions",
-    lazy_imports={"bar": "tests.targets.fn_module:bar"},
+    uncached_imports=["settings"],
+    lazy_imports={
+        "bar": "tests.targets.fn_module:bar",
+        "settings": lambda: monkay.settings,
+    },
     deprecated_lazy_imports={
         "deprecated": {
             "path": "tests.targets.fn_module:deprecated",
@@ -42,6 +48,40 @@ When providing your own `__all__` variable **after** providing Monkay or you wan
 
 and update the `__all__` value via `Monkay.update_all_var` if wanted.
 
+#### Lazy imports
+
+When using lazy imports the globals get an `__getattr__` injected. A potential old `__getattr__` is used as fallback when provided **before**
+initializing the Monkay instance:
+
+`module attr > monkay __getattr__ > former __getattr__ or Error`.
+
+Lazy imports of the `lazy_imports` parameter/attribute are defined in a dict with the key as the pseudo attribute and the value the forward string or a function
+which return result is used.
+
+There are also `deprecated_lazy_imports` which have as value a dictionary with the key-values
+
+- `path`: Path to object or function returning object.
+- `reason` (Optional): Deprecation reason.
+- `new_attribute` (Optional): Upgrade path. New attribute.
+
+
+##### Caching
+
+By default all lazy import results are cached. This is sometimes not desirable
+Sometimes it is desirable to not cache. E.g. for dynamic results like settings.
+The caching can be disabled via the `uncached_imports` parameter which generates from an iterable
+a set of imports which aren't cached.
+
+There is also a method:
+
+`clear_caches(settings_cache=True, import_cache=True)`
+
+Which can be used to clear the caches.
+
+
+##### Monkey 
+
+
 #### Using settings
 
 Settings can be an initialized pydantic settings variable or a class.
@@ -58,6 +98,8 @@ monkay = Monkay(
     settings_path=os.environ.get("MONKAY_SETTINGS", "example.default.path.settings:Settings"),
     settings_preload_name="preloads",
     settings_extensions_name="extensions",
+    uncached_imports=["settings"],
+    lazy_imports={"settings": lambda: monkay.settings}
 )
 ```
 
@@ -70,8 +112,10 @@ class Settings(BaseSettings):
 
 ```
 
-And voila settings are now available from monkay.settings. This works only when all settings arguments are
+And voila settings are now available from monkay.settings as well as settings. This works only when all settings arguments are
 set via environment or defaults.
+Note the `uncached_imports`. Because temporary overwrites should be possible, we should not cache this import. The settings
+are cached anyway.
 
 When having explicit variables this is also possible:
 
@@ -121,7 +165,6 @@ from importlib import import_module
 def preloader():
     for i in ["foo.bar", "foo.err"]:
         import_module(i)
-
 ```
 
 ``` python title="settings.py"
@@ -130,22 +173,6 @@ from pydantic_settings import BaseSettings
 class Settings(BaseSettings):
     preloads: list[str] = ["preloader:preloader"]
 ```
-
-##### Lazy imports
-
-When using lazy imports the globals get an `__getattr__` injected. A potential old `__getattr__` is used as fallback when provided **before**
-initializing the Monkay instance:
-
-`module attr > monkay __getattr__ > former __getattr__ or Error`.
-
-
-Lazy imports of the `lazy_imports` parameter/attribute are defined in a dict with the key as the pseudo attribute and the value the forward.
-
-There are also `deprecated_lazy_imports` which have as value a dictionary with the key-values
-
-- `path`: Forward path.
-- `reason` (Optional): Deprecation reason.
-- `new_attribute` (Optional): Upgrade path.
 
 #### Using the instance feature
 
@@ -181,10 +208,10 @@ An extension is a class implementing the ExtensionProtocol:
 from typing import Protocol
 
 @runtime_checkable
-class ExtensionProtocol(Protocol[L]):
+class ExtensionProtocol(Protocol[INSTANCE, SETTINGS]):
     name: str
 
-    def apply(self, monkay_instance: Monkay[L]) -> None: ...
+    def apply(self, monkay_instance: Monkay[INSTANCE, SETTINGS]) -> None: ...
 
 ```
 

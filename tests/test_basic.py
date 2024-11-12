@@ -3,6 +3,7 @@ import sys
 from io import StringIO
 
 import pytest
+from pydantic_settings import BaseSettings
 
 from monkay import Monkay, load, load_any
 
@@ -43,8 +44,22 @@ def test_attrs():
 
     assert isinstance(mod.monkay, Monkay)
 
+    # in extras
     assert mod.foo() == "foo"
     assert mod.bar() == "bar"
+    with pytest.raises(KeyError):
+        mod.monkay.add_lazy_import("bar", "tests.targets.fn_module:bar")
+    with pytest.raises(KeyError):
+        mod.monkay.add_deprecated_lazy_import(
+            "bar",
+            {
+                "path": "tests.targets.fn_module:deprecated",
+                "reason": "old",
+                "new_attribute": "super_new",
+            },
+        )
+
+    assert isinstance(mod.settings, BaseSettings)
     with pytest.warns(DeprecationWarning) as record:
         assert mod.deprecated() == "deprecated"
     assert record[0].message.args[0] == 'Attribute: "deprecated" is deprecated.\nReason: old.\nUse "super_new" instead.'
@@ -89,7 +104,7 @@ def test_load_any():
 
 def test_extensions(capsys):
     import tests.targets.module_full as mod
-    from tests.targets.extension import NonExtension
+    from tests.targets.extension import Extension, NonExtension
 
     captured = capsys.readouterr()
     assert captured.out == captured.err == ""
@@ -100,6 +115,8 @@ def test_extensions(capsys):
     assert captured_out == "settings_extension1 called\nsettings_extension2 called\n"
     with pytest.raises(ValueError):
         mod.monkay.add_extension(NonExtension(name="foo"))  # type: ignore
+    with pytest.raises(KeyError):
+        mod.monkay.add_extension(Extension(name="settings_extension1"))
     assert capsys.readouterr().out == ""
 
     # order
@@ -156,3 +173,20 @@ def test_app(capsys):
         assert mod.monkay.instance is app2
         assert capsys.readouterr().out == ""
     assert capsys.readouterr().out == ""
+
+
+def test_caches():
+    import tests.targets.module_full as mod
+
+    assert not mod.monkay._cached_imports
+
+    assert mod.bar() == "bar"
+    assert "bar" in mod.monkay._cached_imports
+    assert isinstance(mod.settings, BaseSettings)
+    assert "settings" not in mod.monkay._cached_imports
+    # settings cache
+    assert "_settings" in mod.monkay.__dict__
+    mod.monkay.clear_caches()
+
+    assert not mod.monkay._cached_imports
+    assert "_settings" not in mod.monkay.__dict__
