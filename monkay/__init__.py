@@ -10,4 +10,5 @@ __all__ = [
     "ExtensionProtocol",
     "load",
     "load_any",
+    "absolutify_import",
 ]

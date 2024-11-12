@@ -24,7 +24,8 @@ monkay = Monkay(
     settings_extensions_name="extensions",
     uncached_imports=["settings"],
     lazy_imports={
-        "bar": "tests.targets.fn_module:bar",
+        "bar": ".fn_module:bar",
+        "bar2": "..targets.fn_module:bar2",
         "dynamic": lambda: "dynamic",
         "settings": lambda: monkay.settings,
     },

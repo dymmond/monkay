@@ -41,7 +41,8 @@ path = "monkay/__about__.py"
 
 [tool.hatch.envs.default]
 dependencies = [
-  "pydantic_settings"
+  "pydantic_settings",
+  "pre-commit"
 ]
 
 [tool.hatch.envs.docs]

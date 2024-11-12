@@ -1,8 +1,10 @@
 site_name: Monkay
 site_description: The ultimate preload, settings, lazy import manager..
-site_url: https://devkral.github.io/monkay
+site_url: https://dymmond.github.io/monkay
 
 nav:
   - Home: index.md
   - Tutorial: tutorial.md
   - Helpers: helpers.md
+  - Testing: testing.md
+  - Specials: specials.md
