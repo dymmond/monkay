@@ -1,6 +1,6 @@
 # SPDX-FileCopyrightText: 2024-present alex <devkral@web.de>
 #
-# SPDX-License-Identifier: MIT
+# SPDX-License-Identifier: BSD-3-Clauses
 
 from .base import DeprecatedImport, ExtensionProtocol, Monkay, load, load_any
 
