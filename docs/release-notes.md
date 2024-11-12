@@ -1,5 +1,12 @@
 # Release notes
 
+## Version 0.0.4
+
+### Added
+
+- `find_missing` test method.
+- `getter` attribute saving the injected getter.
+
 ## Version 0.0.3
 
 ### Added
