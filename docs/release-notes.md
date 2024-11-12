@@ -7,6 +7,7 @@
 - `find_missing` test method.
 - `getter` attribute saving the injected getter.
 - `absolutify_import` helper.
+- Add pre-commit.
 
 ### Changed
 
