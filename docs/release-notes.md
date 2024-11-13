@@ -5,6 +5,7 @@
 ### Fixed
 
 - Missing py.typed.
+- Fix double dot in reason. This parameter alone should control the punctuation.
 
 ## Version 0.0.6
 
