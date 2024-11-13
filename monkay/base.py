@@ -511,6 +511,7 @@ class Monkay(Generic[INSTANCE, SETTINGS]):
         all_var: Sequence[str] | None = None,
         *,
         separate_by_category: bool = True,
+        sort_by: Literal["export_name", "path"] = "path",
     ) -> list[SortedExportsEntry]:
         if all_var is None:
             all_var = self.globals_dict["__all__"]
@@ -552,14 +553,14 @@ class Monkay(Generic[INSTANCE, SETTINGS]):
                 )
         if separate_by_category:
 
-            def key_fn(ordertuple: tuple[str, str, str]) -> Sequence:
-                return ordertuple[0], ordertuple[2]
+            def key_fn(ordertuple: SortedExportsEntry) -> tuple:
+                return ordertuple.category, getattr(ordertuple, sort_by)
         else:
 
-            def key_fn(ordertuple: tuple[str, str, str]) -> Sequence:
-                return (ordertuple[2],)
+            def key_fn(ordertuple: SortedExportsEntry) -> tuple:
+                return (getattr(ordertuple, sort_by),)
 
-        sorted_exports.sort(key=key_fn)  # type: ignore
+        sorted_exports.sort(key=key_fn)
         return sorted_exports
 
     def module_getter(
