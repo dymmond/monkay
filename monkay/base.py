@@ -396,7 +396,7 @@ class Monkay(Generic[INSTANCE, SETTINGS]):
                     else:
                         cast(set[str], all_var).add(var)
 
-        return cast(list[str] | set[str], all_var)
+        return cast("list[str] | set[str]", all_var)
 
     def find_missing(
         self,
