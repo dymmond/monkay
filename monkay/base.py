@@ -454,8 +454,8 @@ class Monkay(Generic[INSTANCE, SETTINGS]):
                 value_pathes_set.add(absolutify_import(found_path, self.package))
             try:
                 obj = self.getter(name, no_warn_deprecated=True, check_globals_dict="fail")
-                if not found_path:
-                    value_pathes_set.add(_obj_to_full_name(obj))
+                # also add maybe rexported path
+                value_pathes_set.add(_obj_to_full_name(obj))
             except InGlobalsDict:
                 missing.setdefault(name, set()).add("shadowed")
             except ImportError:
@@ -487,12 +487,17 @@ class Monkay(Generic[INSTANCE, SETTINGS]):
                     continue
                 for export_name in all_var_search:
                     export_path = absolutify_import(f"{search_path}.{export_name}", self.package)
-                    if export_path not in value_pathes_set:
-                        missing.setdefault(export_path, set()).add("search_path_extra")
                     try:
-                        getattr(mod, export_name)
+                        # for re-exports
+                        obj = getattr(mod, export_name)
                     except AttributeError:
                         missing.setdefault(export_path, set()).add("missing_attr")
+                        # still check check the export path
+                        if export_path not in value_pathes_set:
+                            missing.setdefault(export_path, set()).add("search_path_extra")
+                        continue
+                    if export_path not in value_pathes_set and _obj_to_full_name(obj) not in value_pathes_set:
+                        missing.setdefault(export_path, set()).add("search_path_extra")
 
         if all_var is not False:
             for name in key_set.difference(cast(Collection[str], all_var)):
