@@ -26,7 +26,7 @@ def test_hooks():
             "deprecated",
             {
                 "path": "tests.targets.fn_module:deprecated",
-                "reason": "old",
+                "reason": "old.",
                 "new_attribute": "super_new",
             },
             no_hooks=True,
@@ -49,7 +49,7 @@ def test_no_hooks_collisions(monkay_fn):
                 "deprecated",
                 {
                     "path": "tests.targets.fn_module:deprecated",
-                    "reason": "old",
+                    "reason": "old.",
                     "new_attribute": "super_new",
                 },
             ),
@@ -70,7 +70,7 @@ def test_no_hooks_collisions(monkay_fn):
                 "deprecated2",
                 {
                     "path": "tests.targets.fn_module:deprecated",
-                    "reason": "old",
+                    "reason": "old.",
                     "new_attribute": "super_new",
                 },
                 no_hooks=True,

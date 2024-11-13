@@ -45,7 +45,7 @@ if monkay.settings.with_deprecated:
         "deprecated",
         {
             "path": "tests.targets.fn_module:deprecated",
-            "reason": "old",
+            "reason": "old.",
             "new_attribute": "super_new",
         }
     )
@@ -77,7 +77,7 @@ monkay.add_deprecated_lazy_import(
     "deprecated",
     {
         "path": "tests.targets.fn_module:deprecated",
-        "reason": "old",
+        "reason": "old.",
         "new_attribute": "super_new",
     }
 )
@@ -88,7 +88,7 @@ monkay.add_deprecated_lazy_import(
     "deprecated",
     {
         "path": "tests.targets.fn_module:deprecated",
-        "reason": "old",
+        "reason": "old.",
         "new_attribute": "super_new",
     },
     no_hooks=True

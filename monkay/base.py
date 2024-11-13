@@ -635,7 +635,8 @@ class Monkay(Generic[INSTANCE, SETTINGS]):
                 if not no_warn_deprecated:
                     warn_strs = [f'Attribute: "{key}" is deprecated.']
                     if deprecated.get("reason"):
-                        warn_strs.append(f"Reason: {deprecated['reason']}.")
+                        # Note: no dot is added, this is the responsibility of the reason author.
+                        warn_strs.append(f"Reason: {deprecated['reason']}")
                     if deprecated.get("new_attribute"):
                         warn_strs.append(f'Use "{deprecated["new_attribute"]}" instead.')
                     warnings.warn("\n".join(warn_strs), DeprecationWarning, stacklevel=2)

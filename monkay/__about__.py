@@ -1,4 +1,4 @@
 # SPDX-FileCopyrightText: 2024-present alex <devkral@web.de>
 #
 # SPDX-License-Identifier: BSD-3-Clauses
-__version__ = "0.0.6"
+__version__ = "0.0.7"
