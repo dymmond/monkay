@@ -313,6 +313,8 @@ monkay = Monkay(
         "bar": "tests.targets.fn_module:bar",
     },
     skip_all_update=not os.environ.get("DEBUG")
+    # when printing all, lazy imports automatically add to __all__
+    post_add_lazy_import_hook=__all__.append if  __name__ == "__main__" else None
 )
 
 
@@ -329,6 +331,8 @@ def check() -> None:
         raise Exception()
 
 if __name__ == "__main__":
+    # refresh __all__ to contain all lazy imports
+    __all__ = monkay.update_all_var(__all__)
     print_stringify_all()
 elif os.environ.get("DEBUG"):
     check()

@@ -5,6 +5,7 @@
 ### Added
 
 - `sorted_exports` for sorted `__all__` exports.
+- Hooks for add_lazy_import, add_deprecated_lazy_import.
 
 ### Changed
 
