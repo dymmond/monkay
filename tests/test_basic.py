@@ -50,7 +50,7 @@ def test_attrs():
             "bar",
             {
                 "path": "tests.targets.fn_module:deprecated",
-                "reason": "old",
+                "reason": "old.",
                 "new_attribute": "super_new",
             },
         )
