@@ -14,6 +14,7 @@ class FakeApp:
     is_fake_app: bool = True
 
 
+__all__ = ["foo", "stringify_all"]  # noqa
 monkay = Monkay(
     globals(),
     with_extensions=True,
@@ -37,3 +38,13 @@ monkay = Monkay(
         }
     },
 )
+
+
+def stringify_all_plain(separate_by_category: bool):
+    return "[\n{}\n]".format(
+        "\n,".join(f'"{t[1]}"' for t in monkay.sorted_exports(separate_by_category=separate_by_category))
+    )
+
+
+def stringify_all(separate_by_category: bool):
+    return f"__all__ = {stringify_all_plain(separate_by_category)}"

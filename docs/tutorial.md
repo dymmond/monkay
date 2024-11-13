@@ -48,6 +48,8 @@ When providing your own `__all__` variable **after** providing Monkay or you wan
 
 and update the `__all__` value via `Monkay.update_all_var` if wanted.
 
+
+
 #### Lazy imports
 
 When using lazy imports the globals get an `__getattr__` injected. A potential old `__getattr__` is used as fallback when provided **before**
@@ -79,7 +81,7 @@ There is also a method:
 Which can be used to clear the caches.
 
 
-##### Monkey 
+##### Monkey
 
 
 #### Using settings
@@ -255,3 +257,82 @@ There is a second more complicated way to reorder:
 via the parameter `extension_order_key_fn`. It takes a key function which is expected to return a lexicographic key capable for ordering.
 
 You can however intermix both.
+
+
+## Tricks
+
+### Type-checker friendly lazy imports
+
+Additionally to the lazy imports you can define in the `TYPE_CHECKING` scope the imports of the types.
+
+They are not loaded except when type checking.
+
+``` python
+
+from typing import TYPE_CHECKING
+
+from monkay import Monkay
+
+if TYPE_CHECKING:
+    from tests.targets.fn_module import bar
+
+monkay = Monkay(
+    # required for autohooking
+    globals(),
+    lazy_imports={
+        "bar": "tests.targets.fn_module:bar",
+    },
+)
+```
+
+
+### Static `__all__`
+
+For autocompletions it is helpful to have a static `__all__` variable because many tools parse the sourcecode.
+Handling the `__all__` manually is for small imports easy but for bigger projects problematic.
+
+Let's extend the former example:
+
+
+``` python
+
+import os
+from typing import TYPE_CHECKING
+
+from monkay import Monkay
+
+if TYPE_CHECKING:
+    from tests.targets.fn_module import bar
+
+__all__ =["bar", "monkay", "stringify_all", "check"]
+
+monkay = Monkay(
+    # required for autohooking
+    globals(),
+    lazy_imports={
+        "bar": "tests.targets.fn_module:bar",
+    },
+    skip_all_update=not os.environ.get("DEBUG")
+)
+
+
+def print_stringify_all(separate_by_category: bool=True) -> None:
+    print("__all__ = [\n{}\n]".format(
+        "\n,".join(
+            f'"{t[1]}"'
+            for t in monkay.sorted_exports(separate_by_category=separate_by_category)
+        )
+    ))
+
+def check() -> None:
+    if monkay.find_missing(search_pathes=["tests.targets.fn_module"]):
+        raise Exception()
+
+if __name__ == "__main__":
+    print_stringify_all()
+elif os.environ.get("DEBUG"):
+    check()
+```
+
+This way in a debug environment the imports are automatically checked.
+And via `python -m mod` the new `__all__` can be exported.

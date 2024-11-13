@@ -6,6 +6,7 @@ from .base import DeprecatedImport, ExtensionProtocol, Monkay, load, load_any
 
 __all__ = [
     "Monkay",
+    "SortedExportsEntry",
     "DeprecatedImport",
     "ExtensionProtocol",
     "load",
