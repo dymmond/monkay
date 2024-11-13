@@ -1,5 +1,12 @@
 # Release notes
 
+
+## Version 0.0.6
+
+### Fixed
+
+- Re-exports were not detected correctly.
+
 ## Version 0.0.5
 
 ### Added
