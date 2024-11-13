@@ -526,7 +526,7 @@ class Monkay(Generic[INSTANCE, SETTINGS]):
                             str,
                             self.lazy_imports[name]
                             if isinstance(self.lazy_imports[name], str)
-                            else f"{self.globals_dict["__spec__"].name}.{name}",
+                            else f"{self.globals_dict['__spec__'].name}.{name}",
                         ),
                     )
                 )
@@ -539,7 +539,7 @@ class Monkay(Generic[INSTANCE, SETTINGS]):
                             str,
                             self.deprecated_lazy_imports[name]["path"]
                             if isinstance(self.deprecated_lazy_imports[name]["path"], str)
-                            else f"{self.globals_dict["__spec__"].name}.{name}",
+                            else f"{self.globals_dict['__spec__'].name}.{name}",
                         ),
                     )
                 )
@@ -548,7 +548,7 @@ class Monkay(Generic[INSTANCE, SETTINGS]):
                     SortedExportsEntry(
                         "other",
                         name,
-                        f"{self.globals_dict["__spec__"].name}.{name}",
+                        f"{self.globals_dict['__spec__'].name}.{name}",
                     )
                 )
         if separate_by_category:
