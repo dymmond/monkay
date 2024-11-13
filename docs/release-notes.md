@@ -1,5 +1,10 @@
 # Release notes
 
+## Version 0.0.7
+
+### Fixed
+
+- Missing py.typed.
 
 ## Version 0.0.6
 
