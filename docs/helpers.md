@@ -31,7 +31,7 @@ monkay = Monkay(
         "deprecated": {
             # manual load
             "path": lambda: load("tests.targets.fn_module:deprecated"),
-            "reason": "old",
+            "reason": "old.",
             "new_attribute": "super_new",
         }
     },
