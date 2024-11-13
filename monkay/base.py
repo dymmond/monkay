@@ -1,22 +1,24 @@
 from __future__ import annotations
 
 import warnings
-from collections.abc import Callable, Generator, Iterable, Sequence
+from collections.abc import Callable, Collection, Generator, Iterable
 from contextlib import contextmanager
 from contextvars import ContextVar
 from functools import cached_property, partial
 from importlib import import_module
-from inspect import isclass
+from inspect import isclass, ismodule
 from itertools import chain
 from typing import (
     TYPE_CHECKING,
     Any,
     Generic,
     Literal,
+    NamedTuple,
     Protocol,
     TypedDict,
     TypeVar,
     cast,
+    overload,
     runtime_checkable,
 )
 
@@ -27,6 +29,12 @@ INSTANCE = TypeVar("INSTANCE")
 SETTINGS = TypeVar("SETTINGS", bound="BaseSettings")
 
 
+class SortedExportsEntry(NamedTuple):
+    category: Literal["other", "lazy_import", "deprecated_lazy_import"]
+    export_name: str
+    path: str
+
+
 class DeprecatedImport(TypedDict, total=False):
     path: str | Callable[[], Any]
     reason: str
@@ -34,6 +42,34 @@ class DeprecatedImport(TypedDict, total=False):
 
 
 DeprecatedImport.__required_keys__ = frozenset({"deprecated"})
+
+
+class PRE_ADD_LAZY_IMPORT_HOOK(Protocol):
+    @overload
+    @staticmethod
+    def __call__(
+        key: str,
+        value: str | Callable[[], Any],
+        type_: Literal["lazy_import"],
+        /,
+    ) -> tuple[str, str | Callable[[], Any]]: ...
+
+    @overload
+    @staticmethod
+    def __call__(
+        key: str,
+        value: DeprecatedImport,
+        type_: Literal["deprecated_lazy_import"],
+        /,
+    ) -> tuple[str, DeprecatedImport]: ...
+
+    @staticmethod
+    def __call__(
+        key: str,
+        value: str | Callable[[], Any] | DeprecatedImport,
+        type_: Literal["lazy_import", "deprecated_lazy_import"],
+        /,
+    ) -> tuple[str, str | Callable[[], Any] | DeprecatedImport]: ...
 
 
 def load(path: str, *, allow_splits: str = ":.", package: None | str = None) -> Any:
@@ -48,7 +84,7 @@ def load(path: str, *, allow_splits: str = ":.", package: None | str = None) -> 
 
 def load_any(
     path: str,
-    attrs: Sequence[str],
+    attrs: Collection[str],
     *,
     non_first_deprecated: bool = False,
     package: None | str = None,
@@ -70,23 +106,6 @@ def load_any(
     raise ImportError(f"Could not import any of the attributes:.{', '.join(attrs)}")
 
 
-@runtime_checkable
-class ExtensionProtocol(Protocol[INSTANCE, SETTINGS]):
-    name: str
-
-    def apply(self, monkay_instance: Monkay[INSTANCE, SETTINGS]) -> None: ...
-
-
-def _stub_previous_getattr(name: str) -> Any:
-    raise AttributeError(f'Module has no attribute: "{name}" (Monkay).')
-
-
-def _obj_to_full_name(obj: Any) -> str:
-    if not isclass(obj):
-        obj = type(obj)
-    return f"{obj.__module__}.{obj.__qualname__}"
-
-
 def absolutify_import(import_path: str, package: str | None) -> str:
     if not package or not import_path:
         return import_path
@@ -106,6 +125,29 @@ def absolutify_import(import_path: str, package: str | None) -> str:
     return f"{package}.{import_path.lstrip('.')}"
 
 
+@runtime_checkable
+class ExtensionProtocol(Protocol[INSTANCE, SETTINGS]):
+    name: str
+
+    def apply(self, monkay_instance: Monkay[INSTANCE, SETTINGS]) -> None: ...
+
+
+class InGlobalsDict(Exception):
+    pass
+
+
+def _stub_previous_getattr(name: str) -> Any:
+    raise AttributeError(f'Module has no attribute: "{name}" (Monkay).')
+
+
+def _obj_to_full_name(obj: Any) -> str:
+    if ismodule(obj):
+        return obj.__spec__.name  # type: ignore
+    if not isclass(obj):
+        obj = type(obj)
+    return f"{obj.__module__}.{obj.__qualname__}"
+
+
 class Monkay(Generic[INSTANCE, SETTINGS]):
     getter: Callable[..., Any]
     _instance: None | INSTANCE = None
@@ -118,7 +160,7 @@ class Monkay(Generic[INSTANCE, SETTINGS]):
 
     def __init__(
         self,
-        global_dict: dict,
+        globals_dict: dict,
         *,
         with_instance: str | bool = False,
         with_extensions: str | bool = False,
@@ -134,31 +176,36 @@ class Monkay(Generic[INSTANCE, SETTINGS]):
         settings_ctx_name: str = "monkay_settings_ctx",
         extensions_applied_ctx_name: str = "monkay_extensions_applied_ctx",
         skip_all_update: bool = False,
+        pre_add_lazy_import_hook: None | PRE_ADD_LAZY_IMPORT_HOOK = None,
+        post_add_lazy_import_hook: None | Callable[[str], None] = None,
         package: str | None = "",
     ) -> None:
+        self.globals_dict = globals_dict
         if with_instance is True:
             with_instance = "monkay_instance_ctx"
         with_instance = with_instance
         if with_extensions is True:
             with_extensions = "monkay_extensions_ctx"
         with_extensions = with_extensions
-        if package == "" and global_dict.get("__spec__"):
-            package = global_dict["__spec__"].parent
+        if package == "" and globals_dict.get("__spec__"):
+            package = globals_dict["__spec__"].parent
         self.package = package or None
 
         self._cached_imports: dict[str, Any] = {}
+        self.pre_add_lazy_import_hook: None | PRE_ADD_LAZY_IMPORT_HOOK = pre_add_lazy_import_hook
+        self.post_add_lazy_import_hook = post_add_lazy_import_hook
         self.uncached_imports: set[str] = set(uncached_imports)
         self.lazy_imports: dict[str, str | Callable[[], Any]] = {}
         self.deprecated_lazy_imports: dict[str, DeprecatedImport] = {}
         if lazy_imports:
             for name, lazy_import in lazy_imports.items():
-                self.add_lazy_import(name, lazy_import)
+                self.add_lazy_import(name, lazy_import, no_hooks=True)
         if deprecated_lazy_imports:
             for name, deprecated_import in deprecated_lazy_imports.items():
-                self.add_deprecated_lazy_import(name, deprecated_import)
+                self.add_deprecated_lazy_import(name, deprecated_import, no_hooks=True)
         self.settings_path = settings_path
         if self.settings_path:
-            self._settings_var = global_dict[settings_ctx_name] = ContextVar(settings_ctx_name, default=None)
+            self._settings_var = globals_dict[settings_ctx_name] = ContextVar(settings_ctx_name, default=None)
 
         if settings_preload_name:
             warnings.warn(
@@ -172,24 +219,24 @@ class Monkay(Generic[INSTANCE, SETTINGS]):
         self.settings_extensions_name = settings_extensions_name
 
         self._handle_preloads(preloads)
-        if self.lazy_imports or self.deprecated_lazy_imports:
-            getter: Callable[..., Any] = self.module_getter
-            if "__getattr__" in global_dict:
-                getter = partial(getter, chained_getter=global_dict["__getattr__"])
-            global_dict["__getattr__"] = self.getter = getter
-            if not skip_all_update:
-                all_var = global_dict.setdefault("__all__", [])
-                global_dict["__all__"] = self.update_all_var(all_var)
         if with_instance:
-            self._instance_var = global_dict[with_instance] = ContextVar(with_instance, default=None)
+            self._instance_var = globals_dict[with_instance] = ContextVar(with_instance, default=None)
         if with_extensions:
             self.extension_order_key_fn = extension_order_key_fn
             self._extensions = {}
-            self._extensions_var = global_dict[with_extensions] = ContextVar(with_extensions, default=None)
-            self._extensions_applied_var = global_dict[extensions_applied_ctx_name] = ContextVar(
+            self._extensions_var = globals_dict[with_extensions] = ContextVar(with_extensions, default=None)
+            self._extensions_applied_var = globals_dict[extensions_applied_ctx_name] = ContextVar(
                 extensions_applied_ctx_name, default=None
             )
             self._handle_extensions()
+        if self.lazy_imports or self.deprecated_lazy_imports:
+            getter: Callable[..., Any] = self.module_getter
+            if "__getattr__" in globals_dict:
+                getter = partial(getter, chained_getter=globals_dict["__getattr__"])
+            globals_dict["__getattr__"] = self.getter = getter
+            if not skip_all_update:
+                all_var = globals_dict.setdefault("__all__", [])
+                globals_dict["__all__"] = self.update_all_var(all_var)
 
     def clear_caches(self, settings_cache: bool = True, import_cache: bool = True) -> None:
         if settings_cache:
@@ -330,35 +377,45 @@ class Monkay(Generic[INSTANCE, SETTINGS]):
         finally:
             self._extensions_var.reset(token)
 
-    def update_all_var(self, all_var: Sequence[str]) -> list[str]:
-        if not isinstance(all_var, list):
-            all_var = list(all_var)
-        all_var_set = set(all_var)
+    def update_all_var(self, all_var: Collection[str]) -> list[str] | set[str]:
+        if isinstance(all_var, set):
+            all_var_set = all_var
+        else:
+            if not isinstance(all_var, list):
+                all_var = list(all_var)
+            all_var_set = set(all_var)
+
         if self.lazy_imports or self.deprecated_lazy_imports:
             for var in chain(
                 self.lazy_imports,
                 self.deprecated_lazy_imports,
             ):
                 if var not in all_var_set:
-                    all_var.append(var)
-        return all_var
+                    if isinstance(all_var, list):
+                        all_var.append(var)
+                    else:
+                        cast(set[str], all_var).add(var)
+
+        return cast("list[str] | set[str]", all_var)
 
     def find_missing(
         self,
         *,
-        all_var: None | Sequence[str] = None,
-        search_pathes: None | Sequence[str] = None,
+        all_var: bool | Collection[str] = True,
+        search_pathes: None | Collection[str] = None,
         ignore_deprecated_import_errors: bool = False,
         require_search_path_all_var: bool = True,
     ) -> dict[
         str,
         set[
             Literal[
-                "all_var",
+                "not_in_all_var",
+                "missing_attr",
+                "missing_all_var",
                 "import",
+                "shadowed",
                 "search_path_extra",
                 "search_path_import",
-                "search_path_all_var",
             ]
         ],
     ]:
@@ -369,14 +426,22 @@ class Monkay(Generic[INSTANCE, SETTINGS]):
             str,
             set[
                 Literal[
-                    "all_var",
+                    "not_in_all_var",
+                    "missing_attr",
+                    "missing_all_var",
                     "import",
+                    "shadowed",
                     "search_path_extra",
                     "search_path_import",
-                    "search_path_all_var",
                 ]
             ],
         ] = {}
+        if all_var is True:
+            try:
+                all_var = self.getter("__all__", check_globals_dict=True)
+            except AttributeError:
+                missing.setdefault(self.globals_dict["__spec__"].name, set()).add("missing_all_var")
+                all_var = []
         key_set = set(chain(self.lazy_imports.keys(), self.deprecated_lazy_imports.keys()))
         value_pathes_set: set[str] = set()
         for name in key_set:
@@ -388,12 +453,24 @@ class Monkay(Generic[INSTANCE, SETTINGS]):
             if found_path:
                 value_pathes_set.add(absolutify_import(found_path, self.package))
             try:
-                returnobj = self.getter(name, no_warn_deprecated=True)
+                obj = self.getter(name, no_warn_deprecated=True, check_globals_dict="fail")
                 if not found_path:
-                    value_pathes_set.add(_obj_to_full_name(returnobj))
+                    value_pathes_set.add(_obj_to_full_name(obj))
+            except InGlobalsDict:
+                missing.setdefault(name, set()).add("shadowed")
             except ImportError:
                 if not ignore_deprecated_import_errors or name not in self.deprecated_lazy_imports:
                     missing.setdefault(name, set()).add("import")
+        if all_var is not False:
+            for export_name in cast(Collection[str], all_var):
+                try:
+                    obj = self.getter(export_name, no_warn_deprecated=True, check_globals_dict=True)
+                except AttributeError:
+                    missing.setdefault(export_name, set()).add("missing_attr")
+                    continue
+                if export_name not in key_set:
+                    value_pathes_set.add(_obj_to_full_name(obj))
+
         if search_pathes:
             for search_path in search_pathes:
                 try:
@@ -405,16 +482,21 @@ class Monkay(Generic[INSTANCE, SETTINGS]):
                     all_var_search = mod.__all__
                 except AttributeError:
                     if require_search_path_all_var:
-                        missing.setdefault(search_path, set()).add("search_path_all_var")
+                        missing.setdefault(search_path, set()).add("missing_all_var")
 
                     continue
                 for export_name in all_var_search:
                     export_path = absolutify_import(f"{search_path}.{export_name}", self.package)
                     if export_path not in value_pathes_set:
                         missing.setdefault(export_path, set()).add("search_path_extra")
-        if all_var is not None:
-            for name in key_set.difference(all_var):
-                missing.setdefault(name, set()).add("all_var")
+                    try:
+                        getattr(mod, export_name)
+                    except AttributeError:
+                        missing.setdefault(export_path, set()).add("missing_attr")
+
+        if all_var is not False:
+            for name in key_set.difference(cast(Collection[str], all_var)):
+                missing.setdefault(name, set()).add("not_in_all_var")
 
         return missing
 
@@ -443,27 +525,85 @@ class Monkay(Generic[INSTANCE, SETTINGS]):
         finally:
             self._settings_var.reset(token)
 
-    def add_lazy_import(
-        self,
-        name: str,
-        value: str | Callable[[], Any],
-    ) -> None:
+    def add_lazy_import(self, name: str, value: str | Callable[[], Any], *, no_hooks: bool = False) -> None:
+        if not no_hooks and self.pre_add_lazy_import_hook is not None:
+            name, value = self.pre_add_lazy_import_hook(name, value, "lazy_import")
         if name in self.lazy_imports:
             raise KeyError(f'"{name}" is already a lazy import')
         if name in self.deprecated_lazy_imports:
             raise KeyError(f'"{name}" is already a deprecated lazy import')
         self.lazy_imports[name] = value
+        if not no_hooks and self.post_add_lazy_import_hook is not None:
+            self.post_add_lazy_import_hook(name)
 
-    def add_deprecated_lazy_import(
-        self,
-        name: str,
-        value: DeprecatedImport,
-    ) -> None:
+    def add_deprecated_lazy_import(self, name: str, value: DeprecatedImport, *, no_hooks: bool = False) -> None:
+        if not no_hooks and self.pre_add_lazy_import_hook is not None:
+            name, value = self.pre_add_lazy_import_hook(name, value, "deprecated_lazy_import")
         if name in self.lazy_imports:
             raise KeyError(f'"{name}" is already a lazy import')
         if name in self.deprecated_lazy_imports:
             raise KeyError(f'"{name}" is already a deprecated lazy import')
         self.deprecated_lazy_imports[name] = value
+        if not no_hooks and self.post_add_lazy_import_hook is not None:
+            self.post_add_lazy_import_hook(name)
+
+    def sorted_exports(
+        self,
+        all_var: Collection[str] | None = None,
+        *,
+        separate_by_category: bool = True,
+        sort_by: Literal["export_name", "path"] = "path",
+    ) -> list[SortedExportsEntry]:
+        if all_var is None:
+            all_var = self.globals_dict["__all__"]
+        sorted_exports: list[SortedExportsEntry] = []
+        # ensure all entries are only returned once
+        for name in set(all_var):
+            if name in self.lazy_imports:
+                sorted_exports.append(
+                    SortedExportsEntry(
+                        "lazy_import",
+                        name,
+                        cast(
+                            str,
+                            self.lazy_imports[name]
+                            if isinstance(self.lazy_imports[name], str)
+                            else f"{self.globals_dict['__spec__'].name}.{name}",
+                        ),
+                    )
+                )
+            elif name in self.deprecated_lazy_imports:
+                sorted_exports.append(
+                    SortedExportsEntry(
+                        "deprecated_lazy_import",
+                        name,
+                        cast(
+                            str,
+                            self.deprecated_lazy_imports[name]["path"]
+                            if isinstance(self.deprecated_lazy_imports[name]["path"], str)
+                            else f"{self.globals_dict['__spec__'].name}.{name}",
+                        ),
+                    )
+                )
+            else:
+                sorted_exports.append(
+                    SortedExportsEntry(
+                        "other",
+                        name,
+                        f"{self.globals_dict['__spec__'].name}.{name}",
+                    )
+                )
+        if separate_by_category:
+
+            def key_fn(ordertuple: SortedExportsEntry) -> tuple:
+                return ordertuple.category, getattr(ordertuple, sort_by)
+        else:
+
+            def key_fn(ordertuple: SortedExportsEntry) -> tuple:
+                return (getattr(ordertuple, sort_by),)
+
+        sorted_exports.sort(key=key_fn)
+        return sorted_exports
 
     def module_getter(
         self,
@@ -471,12 +611,17 @@ class Monkay(Generic[INSTANCE, SETTINGS]):
         *,
         chained_getter: Callable[[str], Any] = _stub_previous_getattr,
         no_warn_deprecated: bool = False,
+        check_globals_dict: bool | Literal["fail"] = False,
     ) -> Any:
         """
         Module Getter which handles lazy imports.
         The injected version containing a potential found __getattr__ handler as chained_getter
         is availabe as getter attribute.
         """
+        if check_globals_dict and key in self.globals_dict:
+            if check_globals_dict == "fail":
+                raise InGlobalsDict(f'"{key}" is defined as real variable.')
+            return self.globals_dict[key]
         lazy_import = self.lazy_imports.get(key)
         if lazy_import is None:
             deprecated = self.deprecated_lazy_imports.get(key)
