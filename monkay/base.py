@@ -170,7 +170,7 @@ class Monkay(Generic[INSTANCE, SETTINGS]):
         with_extensions: str | bool = False,
         extension_order_key_fn: None
         | Callable[[ExtensionProtocol[INSTANCE, SETTINGS]], Any] = None,
-        settings_path: str | Callable[[], str] = "",
+        settings_path: str | Callable[[], BaseSettings] = "",
         preloads: Iterable[str] = (),
         settings_preload_name: str = "",
         settings_preloads_name: str = "",
@@ -582,10 +582,10 @@ class Monkay(Generic[INSTANCE, SETTINGS]):
         return settings
 
     @settings.setter
-    def settings(self, value: str | Callable[[], str]) -> None:
+    def settings(self, value: str | Callable[[], BaseSettings]) -> None:
         if not value:
             return
-        # lazy init settings
+        # init _settings_var if not initialized yet
         if self._settings_var is None:
             self._settings_var = self.globals_dict[self.settings_ctx_name] = ContextVar(
                 self.settings_ctx_name, default=None
