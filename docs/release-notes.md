@@ -1,5 +1,16 @@
 # Release notes
 
+## Version 0.0.8
+
+### Added
+
+- Settings forwards and a liberalized settings_path parameter.
+- Assignments to the settings attribute.
+
+### Fixed
+
+- Use the right instance for apply_settings in set_instance.
+
 ## Version 0.0.7
 
 ### Fixed

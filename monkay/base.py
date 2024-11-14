@@ -157,6 +157,7 @@ class Monkay(Generic[INSTANCE, SETTINGS]):
     _extensions_var: None | ContextVar[None | dict[str, ExtensionProtocol[INSTANCE, SETTINGS]]] = None
     _extensions_applied: None | ContextVar[dict[str, ExtensionProtocol[INSTANCE, SETTINGS]] | None] = None
     _settings_var: ContextVar[SETTINGS | None] | None = None
+    _settings_definition: SETTINGS | type[SETTINGS] | str | Callable[[], SETTINGS] | None = None
 
     def __init__(
         self,
@@ -165,7 +166,7 @@ class Monkay(Generic[INSTANCE, SETTINGS]):
         with_instance: str | bool = False,
         with_extensions: str | bool = False,
         extension_order_key_fn: None | Callable[[ExtensionProtocol[INSTANCE, SETTINGS]], Any] = None,
-        settings_path: str | Callable[[], BaseSettings] = "",
+        settings_path: str | Callable[[], SETTINGS] | SETTINGS | type[SETTINGS] | None = None,
         preloads: Iterable[str] = (),
         settings_preload_name: str = "",
         settings_preloads_name: str = "",
@@ -203,11 +204,9 @@ class Monkay(Generic[INSTANCE, SETTINGS]):
         if deprecated_lazy_imports:
             for name, deprecated_import in deprecated_lazy_imports.items():
                 self.add_deprecated_lazy_import(name, deprecated_import, no_hooks=True)
-        self.settings_path = settings_path
-        self.settings_ctx_name = settings_ctx_name
-        if self.settings_path:
-            self._settings_var = globals_dict[self.settings_ctx_name] = ContextVar(self.settings_ctx_name, default=None)
-
+        if settings_path is not None:
+            self._settings_var = globals_dict[settings_ctx_name] = ContextVar(settings_ctx_name, default=None)
+            self.settings = settings_path  # type: ignore
         if settings_preload_name:
             warnings.warn(
                 'The "settings_preload_name" parameter is deprecated use "settings_preloads_name" instead.',
@@ -509,43 +508,55 @@ class Monkay(Generic[INSTANCE, SETTINGS]):
         return missing
 
     @cached_property
-    def _settings(self) -> SETTINGS:
-        settings: Any = load(self.settings_path, package=self.package)
+    def _loaded_settings(self) -> SETTINGS | None:
+        # only class and string pathes
+        if isclass(self._settings_definition):
+            return self._settings_definition()
+        assert isinstance(self._settings_definition, str), f"Not a settings object: {self._settings_definition}"
+        if not self._settings_definition:
+            return None
+        settings: SETTINGS | type[SETTINGS] = load(self._settings_definition, package=self.package)
         if isclass(settings):
             settings = settings()
-        return settings
+        return cast(SETTINGS, settings)
 
     @property
     def settings(self) -> SETTINGS:
-        assert self.settings_path and self._settings_var is not None, "Monkay not enabled for settings"
-        settings = self._settings_var.get()
+        assert self._settings_var is not None, "Monkay not enabled for settings"
+        settings: SETTINGS | Callable[[], SETTINGS] | None = self._settings_var.get()
         if settings is None:
             # when settings_path is callable bypass the cache, for forwards
-            if callable(self.settings_path):
-                return self.settings_path()
-            settings = self._settings
+            settings = (
+                self._loaded_settings
+                if isinstance(self._settings_definition, str) or isclass(self._settings_definition)
+                else self._settings_definition
+            )
+        if callable(settings):
+            settings = settings()
+        if settings is None:
+            raise RuntimeError("Settings are not set yet. Returned settings are None or settings_path is empty.")
         return settings
 
     @settings.setter
-    def settings(self, value: str | Callable[[], BaseSettings]) -> None:
+    def settings(self, value: str | Callable[[], SETTINGS] | SETTINGS | type[SETTINGS] | None) -> None:
+        assert self._settings_var is not None, "Monkay not enabled for settings"
         if not value:
+            self._settings_definition = ""
             return
-        # init _settings_var if not initialized yet
-        if self._settings_var is None:
-            self._settings_var = self.globals_dict[self.settings_ctx_name] = ContextVar(
-                self.settings_ctx_name, default=None
-            )
-        self.settings_path = value
+        if not isinstance(value, str) and not callable(value) and not isclass(value):
+            self._settings_definition = lambda: value
+        else:
+            self._settings_definition = value
         del self.settings
 
     @settings.deleter
     def settings(self) -> None:
         # clear cache
-        self.__dict__.pop("_settings", None)
+        self.__dict__.pop("_loaded_settings", None)
 
     @contextmanager
     def with_settings(self, settings: SETTINGS | None) -> Generator:
-        assert self.settings_path and self._settings_var is not None, "Monkay not enabled for settings"
+        assert self._settings_var is not None, "Monkay not enabled for settings"
         # why None, for temporary using the real settings
         token = self._settings_var.set(settings)
         try:

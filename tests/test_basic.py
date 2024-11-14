@@ -181,11 +181,11 @@ def test_caches():
     assert isinstance(mod.settings, BaseSettings)
     assert "settings" not in mod.monkay._cached_imports
     # settings cache
-    assert "_settings" in mod.monkay.__dict__
+    assert "_loaded_settings" in mod.monkay.__dict__
     mod.monkay.clear_caches()
 
     assert not mod.monkay._cached_imports
-    assert "_settings" not in mod.monkay.__dict__
+    assert "_loaded_settings" not in mod.monkay.__dict__
 
 
 def test_sorted_exports():

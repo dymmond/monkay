@@ -18,3 +18,6 @@ class Settings(BaseSettings):
         lambda: load("tests.targets.extension:Extension")(name="settings_extension1"),
         SettingsExtension,
     ]
+
+
+hurray = Settings()
