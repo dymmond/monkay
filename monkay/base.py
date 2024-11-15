@@ -176,6 +176,7 @@ class Monkay(Generic[INSTANCE, SETTINGS]):
         settings_ctx_name: str = "monkay_settings_ctx",
         extensions_applied_ctx_name: str = "monkay_extensions_applied_ctx",
         skip_all_update: bool = False,
+        evaluate_settings: bool = True,
         pre_add_lazy_import_hook: None | PRE_ADD_LAZY_IMPORT_HOOK = None,
         post_add_lazy_import_hook: None | Callable[[str], None] = None,
         package: str | None = "",
@@ -234,7 +235,7 @@ class Monkay(Generic[INSTANCE, SETTINGS]):
                 module = None
             if module is not None and len(splitted) == 2:
                 getattr(module, splitted[1])()
-        if self._settings_definition:
+        if evaluate_settings and self._settings_definition:
             # disables overwrite
             with self.with_settings(None):
                 self.evaluate_settings(on_conflict="error")

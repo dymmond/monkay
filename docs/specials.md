@@ -157,6 +157,7 @@ monkay = Monkay(
     globals(),
     # required for initializing settings
     settings_path=""
+    evaluate_settings=False
 )
 
 # somewhere later
