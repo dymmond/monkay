@@ -4,9 +4,18 @@
 
 ### Added
 
-- Settings forwards and a liberalized settings_path parameter.
+- Settings forwards
+- `settings_path` parameter has now more allowed value types.
 - Assignments to the settings attribute.
 - `with_` and `set_` operations returning set object.
+
+### Changed
+
+- `settings_path=""` behaves now different (enables settings). The default switched to `None` (disabled settings).
+
+### Removed
+
+- Remove deprecated alias for `settings_preloads_name`.
 
 ### Fixed
 

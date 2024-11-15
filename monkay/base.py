@@ -168,7 +168,6 @@ class Monkay(Generic[INSTANCE, SETTINGS]):
         extension_order_key_fn: None | Callable[[ExtensionProtocol[INSTANCE, SETTINGS]], Any] = None,
         settings_path: str | Callable[[], SETTINGS] | SETTINGS | type[SETTINGS] | None = None,
         preloads: Iterable[str] = (),
-        settings_preload_name: str = "",
         settings_preloads_name: str = "",
         settings_extensions_name: str = "",
         uncached_imports: Iterable[str] = (),
@@ -207,14 +206,6 @@ class Monkay(Generic[INSTANCE, SETTINGS]):
         if settings_path is not None:
             self._settings_var = globals_dict[settings_ctx_name] = ContextVar(settings_ctx_name, default=None)
             self.settings = settings_path  # type: ignore
-        if settings_preload_name:
-            warnings.warn(
-                'The "settings_preload_name" parameter is deprecated use "settings_preloads_name" instead.',
-                DeprecationWarning,
-                stacklevel=2,
-            )
-        if not settings_preloads_name and settings_preload_name:
-            settings_preloads_name = settings_preload_name
         self.settings_preloads_name = settings_preloads_name
         self.settings_extensions_name = settings_extensions_name
 
