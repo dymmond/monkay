@@ -222,13 +222,11 @@ __all__ = ["settings"]
 
 ```
 
-
 ## Typings
 
 Monkay is fully typed and its main class Monkay is a Generic supporting 2 type parameters:
 
 `INSTANCE` and `SETTINGS`
-
 
 
 ```python
@@ -247,7 +245,5 @@ monkay = Monkay[Instance, Settings](
     # provide settings object via class
     settings_path=Settings,
 )
-
-
 
 ```
