@@ -175,3 +175,51 @@ takes place in the main settings).
 
 You can also use the `with_...` functions with None. This disables the overwrite for the scope.
 It is used in set_instance when applying extensions.
+
+## Echoed values
+
+The `with_` and `set_` methods return the passed variable as contextmanager value.
+
+e.g.
+
+``` python
+
+with monkay.with_settings(Settings()) as new_settings:
+    # do things with the settings overwrite
+
+    # disable the overwrite
+    with monkay.with_settings(None) as new_settings2:
+        # echoed is None
+        assert new_settings2 is None
+        # settings are the old settings again
+        assert monkay.settings is old_settings
+
+```
+
+
+## Forwarder
+
+Sometimes you have an old settings place and want to forward it to the monkay one.
+Here does no helper exist but a forwarder is easy to write:
+
+``` python
+from typing import Any, cast, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .global_settings import EdgySettings
+
+
+class SettingsForward:
+    def __getattribute__(self, name: str) -> Any:
+        import edgy
+
+        return getattr(edgy.monkay.settings, name)
+
+# we want to pretend the forward is the real object
+settings = cast("EdgySettings", SettingsForward())
+
+__all__ = ["settings"]
+
+
+
+```

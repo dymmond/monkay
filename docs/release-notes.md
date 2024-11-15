@@ -6,6 +6,7 @@
 
 - Settings forwards and a liberalized settings_path parameter.
 - Assignments to the settings attribute.
+- `with_` and `set_` operations returning set object.
 
 ### Fixed
 

@@ -39,8 +39,9 @@ def test_settings_overwrite():
     settings_path = mod.monkay._settings_definition
     assert isinstance(settings_path, str)
     new_settings = old_settings.model_copy(update={"preloadd": []})
-    with mod.monkay.with_settings(new_settings):
+    with mod.monkay.with_settings(new_settings) as yielded:
         assert mod.monkay.settings is new_settings
+        assert mod.monkay.settings is yielded
         assert mod.monkay.settings is not old_settings
         # overwriting settings doesn't affect temporary scope
         mod.monkay.settings = mod.monkay._settings_definition

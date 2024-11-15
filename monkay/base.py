@@ -258,7 +258,7 @@ class Monkay(Generic[INSTANCE, SETTINGS]):
         *,
         apply_extensions: bool = True,
         use_extensions_overwrite: bool = True,
-    ) -> None:
+    ) -> INSTANCE | None:
         assert self._instance_var is not None, "Monkay not enabled for instances"
         # need to address before the instance is swapped
         if apply_extensions and self._extensions_applied_var.get() is not None:
@@ -268,6 +268,7 @@ class Monkay(Generic[INSTANCE, SETTINGS]):
             # unapply a potential instance overwrite
             with self.with_instance(None):
                 self.apply_extensions(use_overwrite=use_extensions_overwrite)
+        return instance
 
     @contextmanager
     def with_instance(
@@ -276,7 +277,7 @@ class Monkay(Generic[INSTANCE, SETTINGS]):
         *,
         apply_extensions: bool = False,
         use_extensions_overwrite: bool = True,
-    ) -> Generator:
+    ) -> Generator[INSTANCE | None]:
         assert self._instance_var is not None, "Monkay not enabled for instances"
         # need to address before the instance is swapped
         if apply_extensions and self._extensions_var is not None and self._extensions_applied_var.get() is not None:
@@ -285,7 +286,7 @@ class Monkay(Generic[INSTANCE, SETTINGS]):
         try:
             if apply_extensions and self._extensions_var is not None:
                 self.apply_extensions(use_overwrite=use_extensions_overwrite)
-            yield
+            yield instance
         finally:
             self._instance_var.reset(token)
 
@@ -368,14 +369,14 @@ class Monkay(Generic[INSTANCE, SETTINGS]):
         extensions: dict[str, ExtensionProtocol[INSTANCE, SETTINGS]] | None,
         *,
         apply_extensions: bool = False,
-    ) -> Generator:
+    ) -> Generator[dict[str, ExtensionProtocol[INSTANCE, SETTINGS]] | None]:
         # why None, for temporary using the real extensions
         assert self._extensions_var is not None, "Monkay not enabled for extensions"
         token = self._extensions_var.set(extensions)
         try:
             if apply_extensions and self.instance is not None:
                 self.apply_extensions()
-            yield
+            yield extensions
         finally:
             self._extensions_var.reset(token)
 
@@ -555,12 +556,12 @@ class Monkay(Generic[INSTANCE, SETTINGS]):
         self.__dict__.pop("_loaded_settings", None)
 
     @contextmanager
-    def with_settings(self, settings: SETTINGS | None) -> Generator:
+    def with_settings(self, settings: SETTINGS | None) -> Generator[SETTINGS | None]:
         assert self._settings_var is not None, "Monkay not enabled for settings"
         # why None, for temporary using the real settings
         token = self._settings_var.set(settings)
         try:
-            yield
+            yield settings
         finally:
             self._settings_var.reset(token)
 
