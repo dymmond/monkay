@@ -235,13 +235,15 @@ Here a combined example:
 
 
 ```python
+from dataclasses import dataclass
+
 from pydantic_settings import BaseSettings
 from monkay import Monkay, ExtensionProtocol
 
 class Instance: ...
 
 
-# providing Instance and Settings is entirely optional here
+# providing Instance and Settings as generic types is entirely optional here
 @dataclass
 class Extension(ExtensionProtocol["Instance", "Settings"]):
     name: str = "hello"
