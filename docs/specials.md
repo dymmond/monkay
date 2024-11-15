@@ -226,17 +226,32 @@ __all__ = ["settings"]
 
 Monkay is fully typed and its main class Monkay is a Generic supporting 2 type parameters:
 
-`INSTANCE` and `SETTINGS`
+`INSTANCE` and `SETTINGS`.
+
+Monkay features also a protocol type for extensions: `ExtensionProtocol`.
+This is protocol is runtime checkable and has also support for both paramers.
+
+Here a combined example:
 
 
 ```python
 from pydantic_settings import BaseSettings
-from monkay import Monkay
+from monkay import Monkay, ExtensionProtocol
 
 class Instance: ...
 
 
-class Settings(BaseSettings): ...
+# providing Instance and Settings is entirely optional here
+@dataclass
+class Extension(ExtensionProtocol["Instance", "Settings"]):
+    name: str = "hello"
+
+    def apply(self, monkay_instance: Monkay) -> None:
+        """Do something here"""
+
+
+class Settings(BaseSettings):
+    extensions: list[ExtensionProtocol["Instance", "Settings"]] =[Extension()]
 
 
 # type Monkay more strict
@@ -244,6 +259,7 @@ monkay = Monkay[Instance, Settings](
     globals(),
     # provide settings object via class
     settings_path=Settings,
+    with_extensions=True,
+    settings_extensions_name="extensions"
 )
-
 ```
