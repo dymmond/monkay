@@ -1,5 +1,16 @@
 # Release notes
 
+## Version 0.0.9
+
+### Added
+
+- `apply_settings` parameter.
+- `evaluate_settings` for lazy settings or settings overwrites.
+
+### Fixed
+
+- Lazy setup.
+
 ## Version 0.0.8
 
 ### Added

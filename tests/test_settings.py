@@ -38,11 +38,17 @@ def test_settings_overwrite():
     old_settings = mod.monkay.settings
     settings_path = mod.monkay._settings_definition
     assert isinstance(settings_path, str)
-    new_settings = old_settings.model_copy(update={"preloadd": []})
+
+    assert "tests.targets.module_settings_preloaded" not in sys.modules
+    new_settings = old_settings.model_copy(update={"preloads": ["tests.targets.module_settings_preloaded"]})
     with mod.monkay.with_settings(new_settings) as yielded:
         assert mod.monkay.settings is new_settings
         assert mod.monkay.settings is yielded
         assert mod.monkay.settings is not old_settings
+        assert "tests.targets.module_settings_preloaded" not in sys.modules
+        mod.monkay.evaluate_settings()
+        assert "tests.targets.module_settings_preloaded" in sys.modules
+
         # overwriting settings doesn't affect temporary scope
         mod.monkay.settings = mod.monkay._settings_definition
         assert mod.monkay.settings is new_settings
@@ -51,3 +57,33 @@ def test_settings_overwrite():
         with mod.monkay.with_settings(None):
             assert mod.monkay.settings is not new_settings
             assert mod.monkay.settings is not old_settings
+
+
+@pytest.mark.parametrize("mode", ["error", "replace", "keep"])
+def test_settings_overwrite_evaluate_modes(mode):
+    import tests.targets.module_full as mod
+
+    with mod.monkay.with_settings(
+        mod.monkay.settings.model_copy(update={"preloads": ["tests.targets.module_settings_preloaded"]})
+    ) as new_settings:
+        assert new_settings is not None
+        if mode == "error":
+            with pytest.raises(KeyError):
+                mod.monkay.evaluate_settings(on_conflict=mode)
+        else:
+            mod.monkay.evaluate_settings(on_conflict=mode)
+
+
+def test_settings_overwrite_evaluate_no_conflict():
+    import tests.targets.module_full as mod
+
+    with mod.monkay.with_settings(
+        mod.monkay.settings.model_copy(
+            update={
+                "preloads": ["tests.targets.module_settings_preloaded"],
+                "extensions": [],
+            }
+        )
+    ) as new_settings:
+        assert new_settings is not None
+        mod.monkay.evaluate_settings(on_conflict="error")

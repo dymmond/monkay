@@ -133,6 +133,15 @@ child.monkay.settings = lambda: monkay.settings
 
 ```
 
+## Manual extension setup
+
+Extensions can be added via the add_extension method.
+It has 2 keyword parameters:
+
+- use_overwrite (by default True): Use the temporary overwrite provided by with_extensions. Setting this to False is a shortcut to unapply via with_extensions.
+- on_conflict (by default "error"): Define what happens on a name conflict: error, keep (old extension), replace (with provided extension)
+
+
 ## Lazy settings setup
 
 Like when using a settings forward it is possible to activate the settings later by assigning a string, a class or an settings instance
@@ -148,6 +157,7 @@ monkay = Monkay(
     globals(),
     # required for initializing settings
     settings_path=""
+    evaluate_settings=False
 )
 
 # somewhere later
@@ -160,7 +170,15 @@ elif os.environ.get("PERFORMANCE"):
 else:
     monkay.settings = DebugSettings()
 
+# now the settings are applied
+monkay.evaluate_settings()
 ```
+
+### `evaluate_settings` parameters
+
+`evaluate_settings` has following keyword only parameter:
+
+- on_conflict: matches the values of add_extension but defaults to `keep`
 
 ## Other settings types
 
@@ -220,6 +238,48 @@ settings = cast("EdgySettings", SettingsForward())
 
 __all__ = ["settings"]
 
+```
+
+## Typings
+
+Monkay is fully typed and its main class Monkay is a Generic supporting 2 type parameters:
+
+`INSTANCE` and `SETTINGS`.
+
+Monkay features also a protocol type for extensions: `ExtensionProtocol`.
+This is protocol is runtime checkable and has also support for both paramers.
+
+Here a combined example:
 
 
+```python
+from dataclasses import dataclass
+
+from pydantic_settings import BaseSettings
+from monkay import Monkay, ExtensionProtocol
+
+class Instance: ...
+
+
+# providing Instance and Settings as generic types is entirely optional here
+@dataclass
+class Extension(ExtensionProtocol["Instance", "Settings"]):
+    name: str = "hello"
+
+    def apply(self, monkay_instance: Monkay) -> None:
+        """Do something here"""
+
+
+class Settings(BaseSettings):
+    extensions: list[ExtensionProtocol["Instance", "Settings"]] =[Extension()]
+
+
+# type Monkay more strict
+monkay = Monkay[Instance, Settings](
+    globals(),
+    # provide settings object via class
+    settings_path=Settings,
+    with_extensions=True,
+    settings_extensions_name="extensions"
+)
 ```
