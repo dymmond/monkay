@@ -209,7 +209,6 @@ class Monkay(Generic[INSTANCE, SETTINGS]):
         self.settings_preloads_name = settings_preloads_name
         self.settings_extensions_name = settings_extensions_name
 
-        self._handle_preloads(preloads)
         if with_instance:
             self._instance_var = globals_dict[with_instance] = ContextVar(with_instance, default=None)
         if with_extensions:
@@ -219,7 +218,6 @@ class Monkay(Generic[INSTANCE, SETTINGS]):
             self._extensions_applied_var = globals_dict[extensions_applied_ctx_name] = ContextVar(
                 extensions_applied_ctx_name, default=None
             )
-            self._handle_extensions()
         if self.lazy_imports or self.deprecated_lazy_imports:
             getter: Callable[..., Any] = self.module_getter
             if "__getattr__" in globals_dict:
@@ -228,6 +226,18 @@ class Monkay(Generic[INSTANCE, SETTINGS]):
             if not skip_all_update:
                 all_var = globals_dict.setdefault("__all__", [])
                 globals_dict["__all__"] = self.update_all_var(all_var)
+        for preload in preloads:
+            splitted = preload.rsplit(":", 1)
+            try:
+                module = import_module(splitted[0], self.package)
+            except ImportError:
+                module = None
+            if module is not None and len(splitted) == 2:
+                getattr(module, splitted[1])()
+        if self._settings_definition:
+            # disables overwrite
+            with self.with_settings(None):
+                self.evaluate_settings(on_conflict="error")
 
     def clear_caches(self, settings_cache: bool = True, import_cache: bool = True) -> None:
         if settings_cache:
@@ -281,7 +291,7 @@ class Monkay(Generic[INSTANCE, SETTINGS]):
         finally:
             self._instance_var.reset(token)
 
-    def apply_extensions(self, use_overwrite: bool = True) -> None:
+    def apply_extensions(self, *, use_overwrite: bool = True) -> None:
         assert self._extensions_var is not None, "Monkay not enabled for extensions"
         extensions: dict[str, ExtensionProtocol[INSTANCE, SETTINGS]] | None = (
             self._extensions_var.get() if use_overwrite else None
@@ -337,8 +347,9 @@ class Monkay(Generic[INSTANCE, SETTINGS]):
         extension: ExtensionProtocol[INSTANCE, SETTINGS]
         | type[ExtensionProtocol[INSTANCE, SETTINGS]]
         | Callable[[], ExtensionProtocol[INSTANCE, SETTINGS]],
+        *,
         use_overwrite: bool = True,
-        replace: bool = False,
+        on_conflict: Literal["error", "keep", "replace"] = "error",
     ) -> None:
         assert self._extensions_var is not None, "Monkay not enabled for extensions"
         extensions: dict[str, ExtensionProtocol[INSTANCE, SETTINGS]] | None = (
@@ -350,8 +361,11 @@ class Monkay(Generic[INSTANCE, SETTINGS]):
             extension = extension()
         if not isinstance(extension, ExtensionProtocol):
             raise ValueError(f"Extension {extension} is not compatible")
-        if not replace and extension.name in extensions:
-            raise KeyError(f'Extension "{extension.name}" already exists.')
+        if extension.name in extensions:
+            if on_conflict == "error":
+                raise KeyError(f'Extension "{extension.name}" already exists.')
+            elif on_conflict == "keep":
+                return
         extensions[extension.name] = extension
 
     @contextmanager
@@ -680,19 +694,24 @@ class Monkay(Generic[INSTANCE, SETTINGS]):
                 self._cached_imports[key] = value
         return self._cached_imports[key]
 
-    def _handle_preloads(self, preloads: Iterable[str]) -> None:
+    def evaluate_settings(
+        self,
+        *,
+        on_conflict: Literal["error", "keep", "replace"] = "keep",
+    ) -> None:
+        preloads = None
         if self.settings_preloads_name:
-            preloads = chain(preloads, getattr(self.settings, self.settings_preloads_name))
-        for preload in preloads:
-            splitted = preload.rsplit(":", 1)
-            try:
-                module = import_module(splitted[0], self.package)
-            except ImportError:
-                module = None
-            if module is not None and len(splitted) == 2:
-                getattr(module, splitted[1])()
+            preloads = getattr(self.settings, self.settings_preloads_name)
+        if preloads:
+            for preload in preloads:
+                splitted = preload.rsplit(":", 1)
+                try:
+                    module = import_module(splitted[0], self.package)
+                except ImportError:
+                    module = None
+                if module is not None and len(splitted) == 2:
+                    getattr(module, splitted[1])()
 
-    def _handle_extensions(self) -> None:
         if self.settings_extensions_name:
             for extension in getattr(self.settings, self.settings_extensions_name):
-                self.add_extension(extension, use_overwrite=False)
+                self.add_extension(extension, use_overwrite=True, on_conflict=on_conflict)

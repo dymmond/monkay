@@ -1,5 +1,12 @@
 # Release notes
 
+## Version 0.0.9
+
+### Added
+
+- `evaluate_settings` for lazy settings or settings overwrites.
+
+
 ## Version 0.0.8
 
 ### Added
