@@ -169,3 +169,9 @@ When assigning a string or a class, the initialization happens on the first acce
 attribute and are cached.
 Functions get evaluated on every access and should care for caching in case it is required (for forwards the caching
 takes place in the main settings).
+
+
+## Temporary disable overwrite
+
+You can also use the `with_...` functions with None. This disables the overwrite for the scope.
+It is used in set_instance when applying extensions.

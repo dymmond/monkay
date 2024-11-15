@@ -30,3 +30,23 @@ def test_settings_basic():
     mod.monkay.settings = Settings
     mod.monkay.settings = "tests.targets.settings:hurray"
     assert mod.monkay.settings is hurray
+
+
+def test_settings_overwrite():
+    import tests.targets.module_full as mod
+
+    old_settings = mod.monkay.settings
+    settings_path = mod.monkay._settings_definition
+    assert isinstance(settings_path, str)
+    new_settings = old_settings.model_copy(update={"preloadd": []})
+    with mod.monkay.with_settings(new_settings):
+        assert mod.monkay.settings is new_settings
+        assert mod.monkay.settings is not old_settings
+        # overwriting settings doesn't affect temporary scope
+        mod.monkay.settings = mod.monkay._settings_definition
+        assert mod.monkay.settings is new_settings
+
+        # now access the non-temporary settings
+        with mod.monkay.with_settings(None):
+            assert mod.monkay.settings is not new_settings
+            assert mod.monkay.settings is not old_settings
