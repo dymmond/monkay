@@ -165,4 +165,7 @@ else:
 ## Other settings types
 
 All of the assignment examples are also possible as settings_path parameter.
-Internally an assignment takes place.
+When assigning a string or a class, the initialization happens on the first access to the settings
+attribute and are cached.
+Functions get evaluated on every access and should care for caching in case it is required (for forwards the caching
+takes place in the main settings).
