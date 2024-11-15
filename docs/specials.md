@@ -220,6 +220,34 @@ settings = cast("EdgySettings", SettingsForward())
 
 __all__ = ["settings"]
 
+```
+
+
+## Typings
+
+Monkay is fully typed and its main class Monkay is a Generic supporting 2 type parameters:
+
+`INSTANCE` and `SETTINGS`
+
+
+
+```python
+from pydantic_settings import BaseSettings
+from monkay import Monkay
+
+class Instance: ...
+
+
+class Settings(BaseSettings): ...
+
+
+# type Monkay more strict
+monkay = Monkay[Instance, Settings](
+    globals(),
+    # provide settings object via class
+    settings_path=Settings,
+)
+
 
 
 ```
