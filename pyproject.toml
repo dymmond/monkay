@@ -49,6 +49,8 @@ dependencies = [
 [tool.hatch.envs.docs]
 dependencies = [
   "mkdocs",
+  "mkdocs-material>=9.4.4,<10.0.0",
+  "mdx-include>=1.4.2,<2.0.0"
 ]
 [tool.hatch.envs.docs.scripts]
 build = "mkdocs build"

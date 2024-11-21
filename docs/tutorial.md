@@ -6,8 +6,6 @@
 
 ``` shell
 pip install monkay
-# or with pydantic_settings
-# pip install monkay[settings]
 ```
 
 ### Usage
@@ -79,9 +77,6 @@ There is also a method:
 `clear_caches(settings_cache=True, import_cache=True)`
 
 Which can be used to clear the caches.
-
-
-##### Monkey
 
 
 #### Using settings
