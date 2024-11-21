@@ -16,9 +16,7 @@ class MonkaySettings(Generic[SETTINGS]):
     settings_preloads_name: str
     settings_extensions_name: str
     _settings_var: ContextVar[SETTINGS | None] | None = None
-    _settings_definition: (
-        SETTINGS | type[SETTINGS] | str | Callable[[], SETTINGS] | None
-    ) = None
+    _settings_definition: SETTINGS | type[SETTINGS] | str | Callable[[], SETTINGS] | None = None
 
     @cached_property
     def _loaded_settings(self) -> SETTINGS | None:
@@ -30,9 +28,7 @@ class MonkaySettings(Generic[SETTINGS]):
         ), f"Not a settings object: {self._settings_definition}"
         if not self._settings_definition:
             return None
-        settings: SETTINGS | type[SETTINGS] = load(
-            self._settings_definition, package=self.package
-        )
+        settings: SETTINGS | type[SETTINGS] = load(self._settings_definition, package=self.package)
         if isclass(settings):
             settings = settings()
         return cast(SETTINGS, settings)
@@ -45,8 +41,7 @@ class MonkaySettings(Generic[SETTINGS]):
             # when settings_path is callable bypass the cache, for forwards
             settings = (
                 self._loaded_settings
-                if isinstance(self._settings_definition, str)
-                or isclass(self._settings_definition)
+                if isinstance(self._settings_definition, str) or isclass(self._settings_definition)
                 else self._settings_definition
             )
         if callable(settings):

@@ -15,14 +15,12 @@ if TYPE_CHECKING:
 class MonkayExtensions(Generic[INSTANCE, SETTINGS]):
     # extensions are pretended to always exist, we check the _extensions_var
     _extensions: dict[str, ExtensionProtocol[INSTANCE, SETTINGS]]
-    _extensions_var: (
-        None | ContextVar[None | dict[str, ExtensionProtocol[INSTANCE, SETTINGS]]]
-    ) = None
+    _extensions_var: None | ContextVar[None | dict[str, ExtensionProtocol[INSTANCE, SETTINGS]]] = (
+        None
+    )
     # pretend it always exists
     _extensions_applied_var: ContextVar[set[str] | None]
-    extension_order_key_fn: (
-        None | Callable[[ExtensionProtocol[INSTANCE, SETTINGS]], Any]
-    )
+    extension_order_key_fn: None | Callable[[ExtensionProtocol[INSTANCE, SETTINGS]], Any]
     # in truth a property
     instance: INSTANCE | None
 
@@ -36,9 +34,9 @@ class MonkayExtensions(Generic[INSTANCE, SETTINGS]):
         extensions_applied = self._extensions_applied_var.get()
         if extensions_applied is not None:
             raise RuntimeError("Other apply process in the same context is active.")
-        extensions_ordered: Iterable[
-            tuple[str, ExtensionProtocol[INSTANCE, SETTINGS]]
-        ] = cast(dict[str, ExtensionProtocol[INSTANCE, SETTINGS]], extensions).items()
+        extensions_ordered: Iterable[tuple[str, ExtensionProtocol[INSTANCE, SETTINGS]]] = cast(
+            dict[str, ExtensionProtocol[INSTANCE, SETTINGS]], extensions
+        ).items()
 
         if self.extension_order_key_fn is not None:
             extensions_ordered = sorted(
@@ -71,9 +69,7 @@ class MonkayExtensions(Generic[INSTANCE, SETTINGS]):
         if isinstance(name_or_extension, str):
             name = name_or_extension
             extension = extensions.get(name)
-        elif not isclass(name_or_extension) and isinstance(
-            name_or_extension, ExtensionProtocol
-        ):
+        elif not isclass(name_or_extension) and isinstance(name_or_extension, ExtensionProtocol):
             name = name_or_extension.name
             extension = extensions.get(name, name_or_extension)
         else:

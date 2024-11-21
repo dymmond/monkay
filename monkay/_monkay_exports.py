@@ -84,9 +84,7 @@ class MonkayExports:
                     "missing_all_var"
                 )
                 all_var = []
-        key_set = set(
-            chain(self.lazy_imports.keys(), self.deprecated_lazy_imports.keys())
-        )
+        key_set = set(chain(self.lazy_imports.keys(), self.deprecated_lazy_imports.keys()))
         value_pathes_set: set[str] = set()
         for name in key_set:
             found_path: str = ""
@@ -95,24 +93,19 @@ class MonkayExports:
             elif name in self.deprecated_lazy_imports and isinstance(
                 self.deprecated_lazy_imports[name]["path"], str
             ):
-                found_path = cast(
-                    str, self.deprecated_lazy_imports[name]["path"]
-                ).replace(":", ".")
+                found_path = cast(str, self.deprecated_lazy_imports[name]["path"]).replace(
+                    ":", "."
+                )
             if found_path:
                 value_pathes_set.add(absolutify_import(found_path, self.package))
             try:
-                obj = self.getter(
-                    name, no_warn_deprecated=True, check_globals_dict="fail"
-                )
+                obj = self.getter(name, no_warn_deprecated=True, check_globals_dict="fail")
                 # also add maybe rexported path
                 value_pathes_set.add(_obj_to_full_name(obj))
             except InGlobalsDict:
                 missing.setdefault(name, set()).add("shadowed")
             except ImportError:
-                if (
-                    not ignore_deprecated_import_errors
-                    or name not in self.deprecated_lazy_imports
-                ):
+                if not ignore_deprecated_import_errors or name not in self.deprecated_lazy_imports:
                     missing.setdefault(name, set()).add("import")
         if all_var is not False:
             for export_name in cast(Collection[str], all_var):
@@ -141,9 +134,7 @@ class MonkayExports:
 
                     continue
                 for export_name in all_var_search:
-                    export_path = absolutify_import(
-                        f"{search_path}.{export_name}", self.package
-                    )
+                    export_path = absolutify_import(f"{search_path}.{export_name}", self.package)
                     try:
                         # for re-exports
                         obj = getattr(mod, export_name)
@@ -151,9 +142,7 @@ class MonkayExports:
                         missing.setdefault(export_path, set()).add("missing_attr")
                         # still check check the export path
                         if export_path not in value_pathes_set:
-                            missing.setdefault(export_path, set()).add(
-                                "search_path_extra"
-                            )
+                            missing.setdefault(export_path, set()).add("search_path_extra")
                         continue
                     if (
                         export_path not in value_pathes_set
@@ -184,9 +173,7 @@ class MonkayExports:
         self, name: str, value: DeprecatedImport, *, no_hooks: bool = False
     ) -> None:
         if not no_hooks and self.pre_add_lazy_import_hook is not None:
-            name, value = self.pre_add_lazy_import_hook(
-                name, value, "deprecated_lazy_import"
-            )
+            name, value = self.pre_add_lazy_import_hook(name, value, "deprecated_lazy_import")
         if name in self.lazy_imports:
             raise KeyError(f'"{name}" is already a lazy import')
         if name in self.deprecated_lazy_imports:
@@ -228,9 +215,7 @@ class MonkayExports:
                         cast(
                             str,
                             self.deprecated_lazy_imports[name]["path"]
-                            if isinstance(
-                                self.deprecated_lazy_imports[name]["path"], str
-                            )
+                            if isinstance(self.deprecated_lazy_imports[name]["path"], str)
                             else f"{self.globals_dict['__spec__'].name}.{name}",
                         ),
                     )
@@ -283,12 +268,8 @@ class MonkayExports:
                         # Note: no dot is added, this is the responsibility of the reason author.
                         warn_strs.append(f"Reason: {deprecated['reason']}")
                     if deprecated.get("new_attribute"):
-                        warn_strs.append(
-                            f'Use "{deprecated["new_attribute"]}" instead.'
-                        )
-                    warnings.warn(
-                        "\n".join(warn_strs), DeprecationWarning, stacklevel=2
-                    )
+                        warn_strs.append(f'Use "{deprecated["new_attribute"]}" instead.')
+                    warnings.warn("\n".join(warn_strs), DeprecationWarning, stacklevel=2)
 
         if lazy_import is None:
             return chained_getter(key)

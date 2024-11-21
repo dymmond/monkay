@@ -37,11 +37,7 @@ class MonkayInstance(MonkayExtensions[INSTANCE, SETTINGS], Generic[INSTANCE, SET
         ):
             raise RuntimeError("Other apply process in the same context is active.")
         self._instance = instance
-        if (
-            apply_extensions
-            and instance is not None
-            and self._extensions_var is not None
-        ):
+        if apply_extensions and instance is not None and self._extensions_var is not None:
             # unapply a potential instance overwrite
             with self.with_instance(None):
                 self.apply_extensions(use_overwrite=use_extensions_overwrite)

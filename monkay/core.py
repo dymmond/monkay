@@ -37,11 +37,7 @@ class Monkay(
         with_extensions: str | bool = False,
         extension_order_key_fn: None
         | Callable[[ExtensionProtocol[INSTANCE, SETTINGS]], Any] = None,
-        settings_path: str
-        | Callable[[], SETTINGS]
-        | SETTINGS
-        | type[SETTINGS]
-        | None = None,
+        settings_path: str | Callable[[], SETTINGS] | SETTINGS | type[SETTINGS] | None = None,
         preloads: Iterable[str] = (),
         settings_preloads_name: str = "",
         settings_extensions_name: str = "",
@@ -97,8 +93,8 @@ class Monkay(
             self._extensions_var = globals_dict[with_extensions] = ContextVar(
                 with_extensions, default=None
             )
-            self._extensions_applied_var = globals_dict[extensions_applied_ctx_name] = (
-                ContextVar(extensions_applied_ctx_name, default=None)
+            self._extensions_applied_var = globals_dict[extensions_applied_ctx_name] = ContextVar(
+                extensions_applied_ctx_name, default=None
             )
         if self.lazy_imports or self.deprecated_lazy_imports:
             getter: Callable[..., Any] = self.module_getter
@@ -121,9 +117,7 @@ class Monkay(
             with self.with_settings(None):
                 self.evaluate_settings(on_conflict="error")
 
-    def clear_caches(
-        self, settings_cache: bool = True, import_cache: bool = True
-    ) -> None:
+    def clear_caches(self, settings_cache: bool = True, import_cache: bool = True) -> None:
         if settings_cache:
             del self.settings
         if import_cache:
@@ -136,9 +130,7 @@ class Monkay(
     ) -> None:
         preloads = None
         if self.settings_preloads_name:
-            preloads = get_value_from_settings(
-                self.settings, self.settings_preloads_name
-            )
+            preloads = get_value_from_settings(self.settings, self.settings_preloads_name)
         if preloads:
             for preload in preloads:
                 splitted = preload.rsplit(":", 1)
@@ -150,9 +142,5 @@ class Monkay(
                     getattr(module, splitted[1])()
 
         if self.settings_extensions_name:
-            for extension in get_value_from_settings(
-                self.settings, self.settings_extensions_name
-            ):
-                self.add_extension(
-                    extension, use_overwrite=True, on_conflict=on_conflict
-                )
+            for extension in get_value_from_settings(self.settings, self.settings_extensions_name):
+                self.add_extension(extension, use_overwrite=True, on_conflict=on_conflict)

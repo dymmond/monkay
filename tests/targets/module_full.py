@@ -42,7 +42,9 @@ monkay = Monkay(
 
 def stringify_all_plain(separate_by_category: bool):
     return "[\n{}\n]".format(
-        "\n,".join(f'"{t[1]}"' for t in monkay.sorted_exports(separate_by_category=separate_by_category))
+        "\n,".join(
+            f'"{t[1]}"' for t in monkay.sorted_exports(separate_by_category=separate_by_category)
+        )
     )
 
 

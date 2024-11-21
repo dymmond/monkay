@@ -58,7 +58,10 @@ def test_attrs():
     assert isinstance(mod.settings, BaseSettings)
     with pytest.warns(DeprecationWarning) as record:
         assert mod.deprecated() == "deprecated"
-    assert record[0].message.args[0] == 'Attribute: "deprecated" is deprecated.\nReason: old.\nUse "super_new" instead.'
+    assert (
+        record[0].message.args[0]
+        == 'Attribute: "deprecated" is deprecated.\nReason: old.\nUse "super_new" instead.'
+    )
 
 
 def test_load():
