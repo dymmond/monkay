@@ -86,7 +86,7 @@ Which can be used to clear the caches.
 
 #### Using settings
 
-Settings can be an initialized pydantic settings variable or a class.
+Settings pointed at via the string can be an initialized settings variable or a class.
 When pointing to a class the class is automatically called without arguments.
 
 Let's do the configuration like Django via environment variable:
@@ -144,6 +144,45 @@ monkay = Monkay(
     settings_extensions_name="extensions",
 )
 ```
+
+##### Other settings libraries
+
+Here we just use pydantic_settings. But settings can be everything from a dictionary, to a dataclass.
+Only requirement is that names are resolvable as attributes or as keys.`
+
+
+``` python title="explicit_settings.py"
+from typing import TypedDict
+
+class Settings(TypedDict):
+    preloads: list[str]
+    extensions: list[Any]
+    foo: str
+
+settings = Settings(preloads=[], extensions=[], foo="hello")
+# or just a dictionary
+# settings = {"preloads": [], "extensions": [], "foo": "hello"}
+```
+
+and
+
+``` python title="__init__.py"
+import os
+from monkay import Monkay, get_value_from_settings
+monkay = Monkay(
+    globals(),
+    with_extensions=True,
+    with_instance=True,
+    settings_path=os.environ.get("MONKAY_SETTINGS", "example.default.path.settings:settings"),
+    settings_preloads_name="preloads",
+    settings_extensions_name="extensions",
+)
+
+# attribute grabber with fallback to items
+get_value_from_settings(monkay.settings, "foo")
+```
+
+
 
 #### Pathes
 
