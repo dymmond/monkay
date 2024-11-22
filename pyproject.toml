@@ -14,22 +14,23 @@ authors = [
   { name = "Tiago Silva", email = "tiago.arasilva@gmail.com" }
 ]
 classifiers = [
-  "Development Status :: 4 - Beta",
+  "Operating System :: OS Independent",
+  "Topic :: Software Development :: Libraries :: Python Modules",
+  "Topic :: Software Development :: Libraries",
+  "Topic :: Software Development",
+  "Typing :: Typed",
+  "Development Status :: 5 - Production/Stable",
   "Programming Language :: Python",
   "Programming Language :: Python :: 3.9",
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
   "Programming Language :: Python :: Implementation :: CPython",
   "Programming Language :: Python :: Implementation :: PyPy",
   "License :: OSI Approved :: BSD License"
 ]
 dependencies = []
-
-[project.optional-dependencies]
-settings = [
-  "pydantic-settings"
-]
 
 [project.urls]
 Documentation = "https://github.com/devkral/monkay#readme"
@@ -48,6 +49,8 @@ dependencies = [
 [tool.hatch.envs.docs]
 dependencies = [
   "mkdocs",
+  "mkdocs-material>=9.4.4,<10.0.0",
+  "mdx-include>=1.4.2,<2.0.0"
 ]
 [tool.hatch.envs.docs.scripts]
 build = "mkdocs build"
@@ -88,13 +91,14 @@ exclude_lines = [
   "if TYPE_CHECKING:",
 ]
 
-[ruff]
+[tool.ruff]
 line-length = 99
 fix = true
 
 [tool.ruff.lint]
 select = ["E", "W", "F", "C", "B", "I", "UP", "SIM"]
 ignore = ["E501", "B008", "C901", "B026", "SIM115"]
+
 
 [tool.ruff.lint.pycodestyle]
 max-line-length = 99

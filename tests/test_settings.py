@@ -40,7 +40,9 @@ def test_settings_overwrite():
     assert isinstance(settings_path, str)
 
     assert "tests.targets.module_settings_preloaded" not in sys.modules
-    new_settings = old_settings.model_copy(update={"preloads": ["tests.targets.module_settings_preloaded"]})
+    new_settings = old_settings.model_copy(
+        update={"preloads": ["tests.targets.module_settings_preloaded"]}
+    )
     with mod.monkay.with_settings(new_settings) as yielded:
         assert mod.monkay.settings is new_settings
         assert mod.monkay.settings is yielded
@@ -59,12 +61,17 @@ def test_settings_overwrite():
             assert mod.monkay.settings is not old_settings
 
 
+@pytest.mark.parametrize("transform", [lambda x: x, lambda x: x.model_dump()])
 @pytest.mark.parametrize("mode", ["error", "replace", "keep"])
-def test_settings_overwrite_evaluate_modes(mode):
+def test_settings_overwrite_evaluate_modes(mode, transform):
     import tests.targets.module_full as mod
 
     with mod.monkay.with_settings(
-        mod.monkay.settings.model_copy(update={"preloads": ["tests.targets.module_settings_preloaded"]})
+        transform(
+            mod.monkay.settings.model_copy(
+                update={"preloads": ["tests.targets.module_settings_preloaded"]}
+            )
+        )
     ) as new_settings:
         assert new_settings is not None
         if mode == "error":
@@ -74,15 +81,18 @@ def test_settings_overwrite_evaluate_modes(mode):
             mod.monkay.evaluate_settings(on_conflict=mode)
 
 
-def test_settings_overwrite_evaluate_no_conflict():
+@pytest.mark.parametrize("transform", [lambda x: x, lambda x: x.model_dump()])
+def test_settings_overwrite_evaluate_no_conflict(transform):
     import tests.targets.module_full as mod
 
     with mod.monkay.with_settings(
-        mod.monkay.settings.model_copy(
-            update={
-                "preloads": ["tests.targets.module_settings_preloaded"],
-                "extensions": [],
-            }
+        transform(
+            mod.monkay.settings.model_copy(
+                update={
+                    "preloads": ["tests.targets.module_settings_preloaded"],
+                    "extensions": [],
+                }
+            )
         )
     ) as new_settings:
         assert new_settings is not None

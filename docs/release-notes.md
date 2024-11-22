@@ -1,5 +1,14 @@
 # Release notes
 
+
+## Version 0.1.0
+
+### Changed
+
+- Internals refactored. `base.py` is splitted now in multiple submodules.
+- Allow different settings than pydantic_settings.
+- Switch to semantic versioning.
+
 ## Version 0.0.9
 
 ### Added
