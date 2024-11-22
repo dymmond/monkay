@@ -18,3 +18,14 @@ For application frameworks Monkay provides settings which can also temporarily o
 optionally setting names for preloads and extensions.
 
 You may want to continue to the [Tutorial](tutorial.md)
+
+
+## FAQ
+
+### Monkay is a misspelling of monkey
+
+I know. It is intentional.
+
+First the name is quite unique and short.
+
+Second the name monkey is already occupied.
