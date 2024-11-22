@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import copy
-from collections.abc import Callable, Generator
+from collections.abc import Callable, Generator, Iterable
 from contextlib import AbstractContextManager, contextmanager, nullcontext
 from contextvars import ContextVar
-from inspect import isclass
+from functools import wraps
+from importlib import import_module
+from inspect import ismethoddescriptor
 from threading import Lock
 from typing import Any, Generic, TypeVar, cast
 
@@ -14,43 +16,85 @@ class Undefined: ...
 
 T = TypeVar("T")
 
+forbidden_names = {"__getattribute__", "__setattr__", "__delattr__", "__new__", "__init__"}
+
 
 class Cage(Generic[T]):
+    monkay_context_var: ContextVar[tuple[int, T] | type[Undefined]]
+    monkay_deep_copy: bool
+    monkay_update_fn: Callable[[T, T], T] | None
+    monkay_original: T
     monkay_original_last_update: int
+    monkay_original_last_update_lock: None | Lock
+    monkay_original_wrapper: AbstractContextManager
 
-    def __init__(
-        self,
+    def __new__(
+        cls,
         globals_dict: dict,
         obj: T | type[Undefined] = Undefined,
         *,
-        name: str | None = None,
+        name: str,
+        preloads: Iterable[str] = (),
         context_var_name: str = "_{name}_ctx",
         deep_copy: bool = False,
         # for e.g. locks
         original_wrapper: AbstractContextManager = nullcontext(),
         update_fn: Callable[[T, T], T] | None = None,
         self_register: bool = True,
-    ):
-        if name is None:
-            assert obj is not Undefined
-            name = obj.__name__ if isclass(obj) else type(obj).__name__
-        elif obj is Undefined:
+        package: str | None = "",
+    ) -> Cage:
+        if package == "" and globals_dict.get("__spec__"):
+            package = globals_dict["__spec__"].parent
+        package = package or None
+        for preload in preloads:
+            splitted = preload.rsplit(":", 1)
+            try:
+                module = import_module(splitted[0], package)
+            except ImportError:
+                module = None
+            if module is not None and len(splitted) == 2:
+                getattr(module, splitted[1])()
+        if obj is Undefined:
             obj = globals_dict[name]
         assert obj is not Undefined
-        if self_register and issubclass(type(obj), Cage):
-            return
+        if self_register and isinstance(obj, Cage):
+            return obj
         context_var_name = context_var_name.format(name=name)
-        self.monkay_context_var = globals_dict[context_var_name] = ContextVar[
-            tuple[int, T] | type[Undefined]
-        ](context_var_name, default=Undefined)
-        self.monkay_deep_copy = deep_copy
-        self.monkay_update_fn = update_fn
-        self.monkay_original = obj
-        self.monkay_original_last_update = 0
-        self.monkay_original_last_update_lock = None if update_fn is None else Lock()
-        self.monkay_original_wrapper = original_wrapper
+        obj_type = type(obj)
+        attrs: dict = {}
+        for attr in dir(obj_type):
+            if not attr.startswith("__") or not attr.endswith("__") or attr in forbidden_names:
+                continue
+            val = getattr(obj_type, attr)
+            if ismethoddescriptor(val):
+                # we need to add the wrapper to the dict
+                attrs[attr] = cls.monkay_forward(obj_type, attr)
+        attrs["__new__"] = object.__new__
+        monkay_cage_cls = type(cls.__name__, (cls,), attrs)
+        monkay_cage_instance = monkay_cage_cls()
+        monkay_cage_instance.monkay_context_var = globals_dict[context_var_name] = ContextVar(
+            context_var_name, default=Undefined
+        )
+        monkay_cage_instance.monkay_deep_copy = deep_copy
+        monkay_cage_instance.monkay_update_fn = update_fn
+        monkay_cage_instance.monkay_original = obj
+        monkay_cage_instance.monkay_original_last_update = 0
+        monkay_cage_instance.monkay_original_last_update_lock = (
+            None if update_fn is None else Lock()
+        )
+        monkay_cage_instance.monkay_original_wrapper = original_wrapper
+
         if self_register:
-            globals_dict[name] = self
+            globals_dict[name] = monkay_cage_instance
+        return monkay_cage_instance
+
+    @classmethod
+    def monkay_forward(cls, obj_type: type, name: str) -> Any:
+        @wraps(getattr(obj_type, name))
+        def _(self, *args: Any, **kwargs: Any):
+            return self.__getattribute__(name)(*args, **kwargs)
+
+        return _
 
     def monkay_refresh_copy(
         self, *, obj: T | type[Undefined] = Undefined, _monkay_dict: dict | None = None
@@ -63,7 +107,7 @@ class Cage(Generic[T]):
                 if _monkay_dict["monkay_deep_copy"]
                 else copy.copy(_monkay_dict["monkay_original"])
             )
-        _monkay_dict["monkay_context_var"].set(_monkay_dict["monkay_original_last_update"], obj)
+        _monkay_dict["monkay_context_var"].set((_monkay_dict["monkay_original_last_update"], obj))
         return cast(T, obj)
 
     def monkay_conditional_update_copy(self, *, _monkay_dict: dict | None = None) -> T:
@@ -83,7 +127,7 @@ class Cage(Generic[T]):
         return obj
 
     def __getattribute__(self, name: str) -> Any:
-        if name.startswith("monkay_") or name == "__setattr__":
+        if name in forbidden_names or name.startswith("monkay_"):
             return super().__getattribute__(name)
         obj = self.monkay_conditional_update_copy()
 
