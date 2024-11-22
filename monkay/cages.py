@@ -29,6 +29,7 @@ class Cage(Generic[T]):
         # for e.g. locks
         original_wrapper: AbstractContextManager = nullcontext(),
         update_fn: Callable[[T, T], T] | None = None,
+        self_register: bool = True,
     ):
         if name is None:
             assert obj is not Undefined
@@ -36,6 +37,8 @@ class Cage(Generic[T]):
         elif obj is Undefined:
             obj = globals_dict[name]
         assert obj is not Undefined
+        if self_register and issubclass(type(obj), Cage):
+            return
         context_var_name = context_var_name.format(name=name)
         self.monkay_context_var = globals_dict[context_var_name] = ContextVar[
             tuple[int, T] | type[Undefined]
@@ -46,6 +49,8 @@ class Cage(Generic[T]):
         self.monkay_original_last_update = 0
         self.monkay_original_last_update_lock = None if update_fn is None else Lock()
         self.monkay_original_wrapper = original_wrapper
+        if self_register:
+            globals_dict[name] = self
 
     def monkay_refresh_copy(
         self, *, obj: T | type[Undefined] = Undefined, _monkay_dict: dict | None = None
