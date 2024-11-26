@@ -89,6 +89,10 @@ You can define a different by providing the parameter
 
 `context_var_name="different_pattern"` optionally with the name placeholder.
 
+### Access proxied object direct
+
+Proxying the context variable has a slight overhead. You can access the proxied object (the copy of the original in the contextvar)
+via `cage.monkay_proxied()`.
 
 ### Skip wrapper
 
@@ -102,3 +106,6 @@ And if you want to persist the contextvar without wrapper despite having `use_wr
 
 You can also do the inverse by calling, when having `use_wrapper_for_reads=False` (default):
 `cage.monkay_conditional_update_copy(use_wrapper=True)`
+
+Or disable/enable the wrapper for reading when accessing the proxied object directly (only when an update is happening)
+`cage.monkay_proxied(use_wrapper=True)`

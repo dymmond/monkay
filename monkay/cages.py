@@ -95,7 +95,8 @@ class Cage(Generic[T]):
     def monkay_forward(cls, obj_type: type, name: str) -> Any:
         @wraps(getattr(obj_type, name))
         def _(self, *args: Any, **kwargs: Any):
-            return self.__getattribute__(name)(*args, **kwargs)
+            obj = self.monkay_conditional_update_copy()
+            return getattr(obj, name)(*args, **kwargs)
 
         return _
 
@@ -167,6 +168,12 @@ class Cage(Generic[T]):
             return
         obj = self.monkay_conditional_update_copy()
         setattr(obj, name, value)
+
+    def monkay_proxied(
+        self,
+        use_wrapper: bool | None = None,
+    ) -> T:
+        return self.monkay_conditional_update_copy(use_wrapper=use_wrapper)
 
     @contextmanager
     def monkay_with_override(self, value: T) -> Generator[T]:
