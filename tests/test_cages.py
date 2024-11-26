@@ -1,6 +1,7 @@
 import sys
 from contextvars import ContextVar
 from pathlib import Path
+from threading import Lock
 
 import pytest
 
@@ -32,17 +33,20 @@ def test_cages_overwrite():
 def test_cages_preload_and_register():
     d = {}
     assert "tests.targets.module_prefixed" not in sys.modules
-    assert "tests.targets.module_full_preloaded1" not in sys.modules
-    assert "tests.targets.module_full_preloaded1_fn" not in sys.modules
+    assert "tests.targets.cages_preloaded" not in sys.modules
+    assert "tests.targets.cages_preloaded_fn" not in sys.modules
     cage = Cage(
         d,
         target_ro,
         name="target_ro",
-        preloads=["tests.targets.module_prefixed", "tests.targets.module_full_preloaded1:load"],
+        preloads=[
+            "tests.targets.module_prefixed",
+            "tests.targets.cages_preloaded:load",
+        ],
     )
     assert "tests.targets.module_prefixed" in sys.modules
-    assert "tests.targets.module_full_preloaded1" in sys.modules
-    assert "tests.targets.module_full_preloaded1_fn" in sys.modules
+    assert "tests.targets.cages_preloaded" in sys.modules
+    assert "tests.targets.cages_preloaded_fn" in sys.modules
     assert isinstance(d["target_ro"], Cage)
     assert d["target_ro"] is cage
     assert isinstance(d["_target_ro_ctx"], ContextVar)
@@ -61,7 +65,38 @@ def test_cages_retrieve_with_name():
         globals(),
         name="target_ro",
         context_var_name="foo_cages_retrieve_with_name_ctx",
-        self_register=False,
+        skip_self_register=True,
     )
     assert type(globals()["target_ro"]) is not Cage
     assert isinstance(globals()["foo_cages_retrieve_with_name_ctx"], ContextVar)
+
+
+@pytest.mark.parametrize("read_lock", [True, False])
+def test_cages_wrapper_for_non_existing(read_lock):
+    lock = Lock()
+
+    def update_fn(context_content, original):
+        assert lock.locked() == read_lock
+        return original + context_content
+
+    cage = Cage(
+        globals(),
+        [],
+        name="target_cages_wrapper",
+        context_var_name=f"foo_cages_wrapper_ctx{read_lock}",
+        skip_self_register=True,
+        original_wrapper=lock,
+        use_wrapper_for_reads=read_lock,
+        update_fn=update_fn,
+    )
+    assert type(globals()["target_ro"]) is not Cage
+    assert isinstance(globals()[f"foo_cages_wrapper_ctx{read_lock}"], ContextVar)
+    assert cage == []
+    cage.append("b")
+    assert cage == ["b"]
+
+    with cage.monkay_with_original() as original:
+        original.append("a")
+    assert cage == ["a", "b"]
+    cage.append("c")
+    assert cage == ["a", "b", "c"]

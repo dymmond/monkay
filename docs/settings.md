@@ -1,6 +1,5 @@
 # Settings
 
-
 ## Setting settings forward
 
 Sometimes you have some packages which should work independently but
@@ -22,7 +21,6 @@ monkay = Monkay(
     globals(),
     settings_path=os.environ.get("MONKAY_CHILD_SETTINGS", "foo.test:example") or ""
 )
-
 ```
 
 Main
@@ -36,9 +34,7 @@ monkay = Monkay(
     settings_path=os.environ.get("MONKAY_MAIN_SETTINGS", "foo.test:example") or ""
 )
 child.monkay.settings = lambda: monkay.settings
-
 ```
-
 
 ## Lazy settings setup
 
@@ -85,8 +81,6 @@ When assigning a string or a class, the initialization happens on the first acce
 attribute and are cached.
 Functions get evaluated on every access and should care for caching in case it is required (for forwards the caching
 takes place in the main settings).
-
-
 
 ## Forwarder
 

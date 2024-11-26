@@ -22,6 +22,7 @@ forbidden_names = {"__getattribute__", "__setattr__", "__delattr__", "__new__", 
 class Cage(Generic[T]):
     monkay_context_var: ContextVar[tuple[int, T] | type[Undefined]]
     monkay_deep_copy: bool
+    monkay_use_wrapper_for_reads: bool
     monkay_update_fn: Callable[[T, T], T] | None
     monkay_original: T
     monkay_original_last_update: int
@@ -40,7 +41,8 @@ class Cage(Generic[T]):
         # for e.g. locks
         original_wrapper: AbstractContextManager = nullcontext(),
         update_fn: Callable[[T, T], T] | None = None,
-        self_register: bool = True,
+        use_wrapper_for_reads: bool = False,
+        skip_self_register: bool = False,
         package: str | None = "",
     ) -> Cage:
         if package == "" and globals_dict.get("__spec__"):
@@ -57,7 +59,7 @@ class Cage(Generic[T]):
         if obj is Undefined:
             obj = globals_dict[name]
         assert obj is not Undefined
-        if self_register and isinstance(obj, Cage):
+        if not skip_self_register and isinstance(obj, Cage):
             return obj
         context_var_name = context_var_name.format(name=name)
         obj_type = type(obj)
@@ -76,6 +78,7 @@ class Cage(Generic[T]):
             context_var_name, default=Undefined
         )
         monkay_cage_instance.monkay_deep_copy = deep_copy
+        monkay_cage_instance.monkay_use_wrapper_for_reads = use_wrapper_for_reads
         monkay_cage_instance.monkay_update_fn = update_fn
         monkay_cage_instance.monkay_original = obj
         monkay_cage_instance.monkay_original_last_update = 0
@@ -84,7 +87,7 @@ class Cage(Generic[T]):
         )
         monkay_cage_instance.monkay_original_wrapper = original_wrapper
 
-        if self_register:
+        if not skip_self_register:
             globals_dict[name] = monkay_cage_instance
         return monkay_cage_instance
 
@@ -97,22 +100,34 @@ class Cage(Generic[T]):
         return _
 
     def monkay_refresh_copy(
-        self, *, obj: T | type[Undefined] = Undefined, _monkay_dict: dict | None = None
+        self,
+        *,
+        obj: T | type[Undefined] = Undefined,
+        use_wrapper: bool | None = None,
+        _monkay_dict: dict | None = None,
     ) -> T:
+        """Sets the contextvar."""
         if _monkay_dict is None:
             _monkay_dict = super().__getattribute__("__dict__")
+        if use_wrapper is None:
+            use_wrapper = _monkay_dict["monkay_use_wrapper_for_reads"]
         if obj is Undefined:
-            obj = (
-                copy.deepcopy(_monkay_dict["monkay_original"])
-                if _monkay_dict["monkay_deep_copy"]
-                else copy.copy(_monkay_dict["monkay_original"])
-            )
+            with _monkay_dict["monkay_original_wrapper"] if use_wrapper else nullcontext():
+                obj = (
+                    copy.deepcopy(_monkay_dict["monkay_original"])
+                    if _monkay_dict["monkay_deep_copy"]
+                    else copy.copy(_monkay_dict["monkay_original"])
+                )
         _monkay_dict["monkay_context_var"].set((_monkay_dict["monkay_original_last_update"], obj))
         return cast(T, obj)
 
-    def monkay_conditional_update_copy(self, *, _monkay_dict: dict | None = None) -> T:
+    def monkay_conditional_update_copy(
+        self, *, use_wrapper: bool | None = None, _monkay_dict: dict | None = None
+    ) -> T:
         if _monkay_dict is None:
             _monkay_dict = super().__getattribute__("__dict__")
+        if use_wrapper is None:
+            use_wrapper = _monkay_dict["monkay_use_wrapper_for_reads"]
         tup = _monkay_dict["monkay_context_var"].get()
         if tup is Undefined:
             obj = self.monkay_refresh_copy(_monkay_dict=_monkay_dict)
@@ -120,8 +135,11 @@ class Cage(Generic[T]):
             _monkay_dict["monkay_update_fn"] is not None
             and tup[0] != _monkay_dict["monkay_original_last_update"]
         ):
-            obj = _monkay_dict["monkay_update_fn"](obj, _monkay_dict["monkay_original"])
-            obj = self.monkay_refresh_copy(obj=obj, _monkay_dict=_monkay_dict)
+            with _monkay_dict["monkay_original_wrapper"] if use_wrapper else nullcontext():
+                obj = _monkay_dict["monkay_update_fn"](tup[1], _monkay_dict["monkay_original"])
+            obj = self.monkay_refresh_copy(
+                obj=obj, _monkay_dict=_monkay_dict, use_wrapper=use_wrapper
+            )
         else:
             obj = tup[1]
         return obj
