@@ -8,6 +8,11 @@
 - Internals refactored. `base.py` is splitted now in multiple submodules.
 - Allow different settings than pydantic_settings.
 - Switch to semantic versioning.
+- Add cages (thread-safe, proxying contextvars).
+
+### Fixed
+
+- `with_instance` without `with_extensions` was not working.
 
 ## Version 0.0.9
 
