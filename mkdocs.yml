@@ -40,6 +40,8 @@ nav:
   - Helpers: helpers.md
   - Testing: testing.md
   - Specials: specials.md
+  - Settings: settings.md
+  - Cages: cages.md
   - Release Notes: release-notes.md
 
 markdown_extensions:

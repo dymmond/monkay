@@ -9,6 +9,7 @@ from .base import (
     load,
     load_any,
 )
+from .cages import Cage
 from .core import (
     Monkay,
 )
@@ -29,4 +30,5 @@ __all__ = [
     "absolutify_import",
     "InGlobalsDict",
     "get_value_from_settings",
+    "Cage",
 ]
