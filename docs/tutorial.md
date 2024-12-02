@@ -47,11 +47,12 @@ When providing your own `__all__` variable **after** providing Monkay or you wan
 and update the `__all__` value via `Monkay.update_all_var` if wanted.
 
 
-
 #### Lazy imports
 
-When using lazy imports the globals get an `__getattr__` injected. A potential old `__getattr__` is used as fallback when provided **before**
-initializing the Monkay instance:
+When using lazy imports the globals get an `__getattr__` and `__dir__` injected. A potential old `__getattr__` and/or `__dir__` is used when specified **before**
+initializing the Monkay instance.
+
+The lookup hierarchy is:
 
 `module attr > monkay __getattr__ > former __getattr__ or Error`.
 
@@ -64,6 +65,18 @@ There are also `deprecated_lazy_imports` which have as value a dictionary with t
 - `reason` (Optional): Deprecation reason.
 - `new_attribute` (Optional): Upgrade path. New attribute.
 
+##### Listing all attributes with `dir()`
+
+Monkay also injects a `__dir__` module function for listing via dir. It contains all lazy imports as well as `__all__` variable contents.
+The `__dir__` function is also injected without lazy imports when an existing `__getattr__` without a `__dir__` function was detected and
+an `__all__` variable is available.
+It is tried to guess the attributes provided by using the `__all__` variable.
+
+In short the sources for the Monkay `__dir__` are:
+
+- Old `__dir__()` function if provided before the Monkay initialization.
+- `__all__` variable.
+- Lazy imports.
 
 ##### Caching
 
@@ -106,7 +119,6 @@ from pydantic_settings import BaseSettings
 class Settings(BaseSettings):
     preloads: list[str] = []
     extensions: list[Any] = []
-
 ```
 
 And voila settings are now available from monkay.settings as well as settings. This works only when all settings arguments are
@@ -177,8 +189,6 @@ monkay = Monkay(
 get_value_from_settings(monkay.settings, "foo")
 ```
 
-
-
 #### Pathes
 
 Like shown in the examples pathes end with a `:` for an attribute. But sometimes a dot is nicer.
@@ -248,9 +258,7 @@ class ExtensionProtocol(Protocol[INSTANCE, SETTINGS]):
     name: str
 
     def apply(self, monkay_instance: Monkay[INSTANCE, SETTINGS]) -> None: ...
-
 ```
-
 
 A name (can be dynamic) and the apply method are required. The instance itself is easily retrieved from
 the monkay instance.

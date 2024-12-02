@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from collections.abc import Callable, Iterable
 from contextvars import ContextVar
-from functools import partial
 from importlib import import_module
 from typing import (
     Any,
@@ -47,6 +46,7 @@ class Monkay(
         settings_ctx_name: str = "monkay_settings_ctx",
         extensions_applied_ctx_name: str = "monkay_extensions_applied_ctx",
         skip_all_update: bool = False,
+        skip_getattr_fixup: bool = False,
         evaluate_settings: bool = True,
         pre_add_lazy_import_hook: None | PRE_ADD_LAZY_IMPORT_HOOK = None,
         post_add_lazy_import_hook: None | Callable[[str], None] = None,
@@ -96,14 +96,18 @@ class Monkay(
             self._extensions_applied_var = globals_dict[extensions_applied_ctx_name] = ContextVar(
                 extensions_applied_ctx_name, default=None
             )
-        if self.lazy_imports or self.deprecated_lazy_imports:
-            getter: Callable[..., Any] = self.module_getter
-            if "__getattr__" in globals_dict:
-                getter = partial(getter, chained_getter=globals_dict["__getattr__"])
-            globals_dict["__getattr__"] = self.getter = getter
-            if not skip_all_update:
-                all_var = globals_dict.setdefault("__all__", [])
-                globals_dict["__all__"] = self.update_all_var(all_var)
+        if not skip_all_update and (self.lazy_imports or self.deprecated_lazy_imports):
+            all_var = globals_dict.setdefault("__all__", [])
+            globals_dict["__all__"] = self.update_all_var(all_var)
+        # fix missing __dir__ in case only __getattr__ was specified and __dir__ not
+        # it assumes the __all__ var is correct
+        if (
+            not skip_getattr_fixup
+            and "__all__" in globals_dict
+            and "__getattr__" in globals_dict
+            and "__dir__" not in globals_dict
+        ):
+            self._init_global_dir_hook()
         for preload in preloads:
             splitted = preload.rsplit(":", 1)
             try:

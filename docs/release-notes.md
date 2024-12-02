@@ -1,5 +1,16 @@
 # Release notes
 
+## Version 0.1.1
+
+### Changed
+
+- Initialize the getter and dir functions lazily when adding lazy imports.
+- Guess attributes from `__all__` when `__getattr__` definition without `__dir__` function is found.
+
+### Fixed
+
+- Missing `__dir__` injection so lazy imports didn't show up in `dir()`.
+- Error when adding lazy imports later without pre-existing lazy imports.
 
 ## Version 0.1.0
 
