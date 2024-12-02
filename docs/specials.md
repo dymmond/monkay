@@ -95,7 +95,6 @@ monkay.add_deprecated_lazy_import(
 )
 ```
 
-
 ## Manual extension setup
 
 Extensions can be added via the add_extension method.
@@ -127,9 +126,7 @@ with monkay.with_settings(Settings()) as new_settings:
         assert new_settings2 is None
         # settings are the old settings again
         assert monkay.settings is old_settings
-
 ```
-
 
 ## Typings
 
@@ -174,7 +171,6 @@ monkay = Monkay[Instance, Settings](
     settings_extensions_name="extensions"
 )
 ```
-
 
 ## Cages
 

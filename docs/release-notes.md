@@ -1,5 +1,15 @@
 # Release notes
 
+## Version 0.1.1
+
+### Changed
+
+- Initialize the getter and dir functions lazily when adding lazy imports.
+
+### Fixed
+
+- Missing `__dir__` injection so `dir()` didn't show the lazy imports.
+- Error when adding lazy imports later without pre-existing lazy imports.
 
 ## Version 0.1.0
 

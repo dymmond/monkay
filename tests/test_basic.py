@@ -204,3 +204,64 @@ def test_sorted_exports():
         mod.stringify_all(separate_by_category=False)
         == '__all__ = [\n"bar2"\n,"bar"\n,"deprecated"\n,"dynamic"\n,"foo"\n,"settings"\n,"stringify_all"\n]'
     )
+
+
+def test_dir_full():
+    import tests.targets.module_full as mod
+
+    assert "bar2" in dir(mod)
+
+
+def test_dir_add_none_getattr_fixup():
+    import tests.targets.module_none_getattr as mod
+
+    assert "__dir__" in mod.__dict__
+    assert list(filter(lambda x: not x.startswith("__"), dir(mod))) == [
+        "Monkay",
+        "extras",
+        "foo",
+        "monkay",
+    ]
+    mod.monkay.add_lazy_import("bar2", ".fn_module:bar2")
+    assert mod.foo() == "foo"
+    assert mod.bar2() == "bar2"
+    assert list(filter(lambda x: not x.startswith("__"), dir(mod))) == [
+        "Monkay",
+        "bar2",
+        "extras",
+        "foo",
+        "monkay",
+    ]
+
+
+def test_dir_add_none():
+    import tests.targets.module_none as mod
+
+    assert "__dir__" not in mod.__dict__
+    assert "__getattr__" not in mod.__dict__
+    assert list(filter(lambda x: not x.startswith("__"), dir(mod))) == [
+        "Monkay",
+        "monkay",
+    ]
+    mod.monkay.add_lazy_import("bar2", ".fn_module:bar2")
+    assert mod.bar2() == "bar2"
+    assert "__dir__" in mod.__dict__
+    assert "__getattr__" in mod.__dict__
+    assert list(filter(lambda x: not x.startswith("__"), dir(mod))) == [
+        "Monkay",
+        "bar2",
+        "monkay",
+    ]
+
+
+def test_dir_add_none_extra():
+    import tests.targets.module_none as mod
+
+    assert "__dir__" not in mod.__dict__
+    assert "__getattr__" not in mod.__dict__
+    attrs = set(dir(mod))
+    attrs.add("bar2")
+    attrs.add("__dir__")
+    attrs.add("__getattr__")
+    mod.monkay.add_lazy_import("bar2", ".fn_module:bar2")
+    assert set(dir(mod)) == attrs

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import warnings
 from collections.abc import Callable, Collection
+from functools import partial
 from importlib import import_module
 from inspect import isclass, ismodule
 from itertools import chain
@@ -27,9 +28,13 @@ def _obj_to_full_name(obj: Any) -> str:
     return f"{obj.__module__}.{obj.__qualname__}"
 
 
+_empty: tuple[Any, ...] = ()
+
+
 class MonkayExports:
     package: str | None
-    getter: Callable[..., Any]
+    getter: Callable[..., Any] | None = None
+    dir_fn: Callable[[], list[str]] | None = None
     globals_dict: dict
     _cached_imports: dict[str, Any]
     pre_add_lazy_import_hook: None | PRE_ADD_LAZY_IMPORT_HOOK
@@ -37,6 +42,22 @@ class MonkayExports:
     lazy_imports: dict[str, str | Callable[[], Any]]
     deprecated_lazy_imports: dict[str, DeprecatedImport]
     uncached_imports: set[str]
+
+    def _init_global_dir_hook(self) -> None:
+        if self.dir_fn is not None:
+            return
+        dir_fn = self.module_dir_fn
+        if "__dir__" in self.globals_dict:
+            dir_fn = partial(dir_fn, chained_dir_fn=self.globals_dict["__dir__"])
+        self.globals_dict["__dir__"] = self.dir_fn = dir_fn
+
+    def _init_global_getter_hook(self) -> None:
+        if self.getter is not None:
+            return
+        getter = self.module_getter
+        if "__getattr__" in self.globals_dict:
+            getter = partial(getter, chained_getter=self.globals_dict["__getattr__"])
+        self.globals_dict["__getattr__"] = self.getter = getter
 
     def find_missing(
         self,
@@ -165,6 +186,8 @@ class MonkayExports:
             raise KeyError(f'"{name}" is already a lazy import')
         if name in self.deprecated_lazy_imports:
             raise KeyError(f'"{name}" is already a deprecated lazy import')
+        self._init_global_getter_hook()
+        self._init_global_dir_hook()
         self.lazy_imports[name] = value
         if not no_hooks and self.post_add_lazy_import_hook is not None:
             self.post_add_lazy_import_hook(name)
@@ -178,6 +201,8 @@ class MonkayExports:
             raise KeyError(f'"{name}" is already a lazy import')
         if name in self.deprecated_lazy_imports:
             raise KeyError(f'"{name}" is already a deprecated lazy import')
+        self._init_global_getter_hook()
+        self._init_global_dir_hook()
         self.deprecated_lazy_imports[name] = value
         if not no_hooks and self.post_add_lazy_import_hook is not None:
             self.post_add_lazy_import_hook(name)
@@ -190,7 +215,7 @@ class MonkayExports:
         sort_by: Literal["export_name", "path"] = "path",
     ) -> list[SortedExportsEntry]:
         if all_var is None:
-            all_var = self.globals_dict["__all__"]
+            all_var = self.globals_dict.get("__all__", _empty)
         sorted_exports: list[SortedExportsEntry] = []
         # ensure all entries are only returned once
         for name in set(all_var):
@@ -239,6 +264,20 @@ class MonkayExports:
 
         sorted_exports.sort(key=key_fn)
         return sorted_exports
+
+    def module_dir_fn(
+        self,
+        *,
+        chained_dir_fn: Callable[[], list[str]] | None = None,
+    ) -> list[str]:
+        baseset = set(self.globals_dict.get("__all__", None) or _empty)
+        baseset.update(self.lazy_imports.keys())
+        baseset.update(self.deprecated_lazy_imports.keys())
+        if chained_dir_fn is None:
+            baseset.update(self.globals_dict.keys())
+        else:
+            baseset.update(chained_dir_fn())
+        return list(baseset)
 
     def module_getter(
         self,
