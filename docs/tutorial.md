@@ -69,7 +69,8 @@ There are also `deprecated_lazy_imports` which have as value a dictionary with t
 
 Monkay also injects a `__dir__` module function for listing via dir. It contains all lazy imports as well as `__all__` variable contents.
 The `__dir__` function is also injected without lazy imports when an existing `__getattr__` without a `__dir__` function was detected and
-an `__all__` variable is available to fix it.
+an `__all__` variable is available.
+It is tried to guess the attributes provided by using the `__all__` variable.
 
 In short the sources for the Monkay `__dir__` are:
 
@@ -118,7 +119,6 @@ from pydantic_settings import BaseSettings
 class Settings(BaseSettings):
     preloads: list[str] = []
     extensions: list[Any] = []
-
 ```
 
 And voila settings are now available from monkay.settings as well as settings. This works only when all settings arguments are
@@ -189,8 +189,6 @@ monkay = Monkay(
 get_value_from_settings(monkay.settings, "foo")
 ```
 
-
-
 #### Pathes
 
 Like shown in the examples pathes end with a `:` for an attribute. But sometimes a dot is nicer.
@@ -260,9 +258,7 @@ class ExtensionProtocol(Protocol[INSTANCE, SETTINGS]):
     name: str
 
     def apply(self, monkay_instance: Monkay[INSTANCE, SETTINGS]) -> None: ...
-
 ```
-
 
 A name (can be dynamic) and the apply method are required. The instance itself is easily retrieved from
 the monkay instance.
