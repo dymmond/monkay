@@ -87,3 +87,51 @@ def test_add(monkay_fn, export, in_all):
     if in_all:
         assert export in mod.__all__
     assert mod.monkay.getter(export, no_warn_deprecated=True, check_globals_dict=True) is not None
+
+
+@pytest.mark.parametrize(
+    "monkay_fn,export",
+    [
+        (lambda m: m.add_lazy_import("bar", ".fn_module:bar"), "bar"),
+        (
+            lambda m: m.add_deprecated_lazy_import(
+                "deprecated",
+                {
+                    "path": "tests.targets.fn_module:deprecated",
+                    "reason": "old.",
+                    "new_attribute": "super_new",
+                },
+            ),
+            "deprecated",
+        ),
+        (
+            lambda m: m.add_lazy_import(
+                "bar2",
+                ".fn_module:bar",
+                no_hooks=True,
+            ),
+            "bar2",
+        ),
+        (
+            lambda m: m.add_deprecated_lazy_import(
+                "deprecated2",
+                {
+                    "path": "tests.targets.fn_module:deprecated",
+                    "reason": "old.",
+                    "new_attribute": "super_new",
+                },
+                no_hooks=True,
+            ),
+            "deprecated2",
+        ),
+    ],
+)
+def test_none_add(monkay_fn, export):
+    import tests.targets.module_none as mod
+
+    monkay_fn(mod.monkay)
+    mod.__all__ = mod.monkay.update_all_var([])
+    assert export in mod.__all__
+    assert (
+        mod.monkay.getter(export, no_warn_deprecated=True, check_globals_dict="fail") is not None
+    )

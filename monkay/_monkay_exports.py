@@ -80,7 +80,8 @@ class MonkayExports:
             ]
         ],
     ]:
-        """Debug method to check"""
+        """Debug method to check missing imports"""
+        self._init_global_getter_hook()
 
         assert self.getter is not None
         missing: dict[
