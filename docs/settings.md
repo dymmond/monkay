@@ -56,7 +56,7 @@ monkay = Monkay(
 
 # somewhere later
 
-if not os.environg.get("DEBUG"):
+if not os.environ.get("DEBUG"):
     monkay.settings = os.environ.get("MONKAY_MAIN_SETTINGS", "foo.test:example") or ""
 elif os.environ.get("PERFORMANCE"):
     # you can also provide a class
