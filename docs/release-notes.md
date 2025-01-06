@@ -10,11 +10,11 @@
 ### Changed
 
 - The Monkay `__init__` uses `evaluate_settings_once`.
-- Deleting the settings via assignment invalidates also the cache.
+- Deleting the settings via assignment now also invalidates the cache.
 
 ### Fixed
 
-- Assigning an empty dictionary to settings runs in the falsy value path.
+- Assigning an empty dictionary to settings deletes the settings. This should only work for some falsy values.
 
 ## Version 0.1.1
 
