@@ -1,5 +1,21 @@
 # Release notes
 
+
+## Version 0.2.0
+
+### Added
+
+- Add `evaluate_settings_once`.
+
+### Changed
+
+- The Monkay `__init__` uses `evaluate_settings_once`.
+- Deleting the settings via assignment now also invalidates the cache.
+
+### Fixed
+
+- Assigning an empty dictionary to settings deletes the settings. This should only work for some falsy values.
+
 ## Version 0.1.1
 
 ### Changed

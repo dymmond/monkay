@@ -35,6 +35,8 @@ def test_settings_basic():
 def test_settings_overwrite():
     import tests.targets.module_full as mod
 
+    assert mod.monkay.settings_evaluated
+
     old_settings = mod.monkay.settings
     settings_path = mod.monkay._settings_definition
     assert isinstance(settings_path, str)
@@ -44,11 +46,15 @@ def test_settings_overwrite():
         update={"preloads": ["tests.targets.module_settings_preloaded"]}
     )
     with mod.monkay.with_settings(new_settings) as yielded:
+        assert not mod.monkay.settings_evaluated
         assert mod.monkay.settings is new_settings
         assert mod.monkay.settings is yielded
         assert mod.monkay.settings is not old_settings
         assert "tests.targets.module_settings_preloaded" not in sys.modules
         mod.monkay.evaluate_settings()
+        assert mod.monkay.settings_evaluated
+        # assert no evaluation anymore
+        assert not mod.monkay.evaluate_settings_once()
         assert "tests.targets.module_settings_preloaded" in sys.modules
 
         # overwriting settings doesn't affect temporary scope

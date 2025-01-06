@@ -67,7 +67,6 @@ check = "mypy monkay {args}"
 
 [tool.hatch.envs.hatch-test]
 extra-dependencies = [
-  "click",
   "pydantic_settings"
 ]
 
