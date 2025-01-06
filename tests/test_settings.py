@@ -67,6 +67,28 @@ def test_settings_overwrite():
             assert mod.monkay.settings is not old_settings
 
 
+def test_settings_on_access():
+    import tests.targets.module_full as mod
+
+    assert mod.monkay.settings_evaluated
+    mod.monkay.evaluate_settings_once_on_access = True
+
+    old_settings = mod.monkay.settings
+    settings_path = mod.monkay._settings_definition
+    assert isinstance(settings_path, str)
+
+    assert "tests.targets.module_settings_preloaded" not in sys.modules
+    new_settings = old_settings.model_copy(
+        update={"preloads": ["tests.targets.module_settings_preloaded"]}
+    )
+    with mod.monkay.with_settings(new_settings) as yielded:
+        assert not mod.monkay.settings_evaluated
+        assert "tests.targets.module_settings_preloaded" not in sys.modules
+        # evaluates settings
+        assert mod.monkay.settings is yielded
+        assert "tests.targets.module_settings_preloaded" in sys.modules
+
+
 @pytest.mark.parametrize("transform", [lambda x: x, lambda x: x.model_dump()])
 @pytest.mark.parametrize("mode", ["error", "replace", "keep"])
 def test_settings_overwrite_evaluate_modes(mode, transform):

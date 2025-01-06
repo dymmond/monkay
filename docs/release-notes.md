@@ -6,6 +6,7 @@
 ### Added
 
 - Add `evaluate_settings_once`.
+- Add parameter `evaluate_settings_once_on_access`.
 
 ### Changed
 

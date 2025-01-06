@@ -46,6 +46,7 @@ class Monkay(
         settings_ctx_name: str = "monkay_settings_ctx",
         extensions_applied_ctx_name: str = "monkay_extensions_applied_ctx",
         skip_all_update: bool = False,
+        evaluate_settings_once_on_access: bool = False,
         skip_getattr_fixup: bool = False,
         evaluate_settings: bool = True,
         pre_add_lazy_import_hook: None | PRE_ADD_LAZY_IMPORT_HOOK = None,
@@ -64,6 +65,7 @@ class Monkay(
         self.package = package or None
 
         self._cached_imports: dict[str, Any] = {}
+        self.evaluate_settings_once_on_access = evaluate_settings_once_on_access
         self.pre_add_lazy_import_hook = pre_add_lazy_import_hook
         self.post_add_lazy_import_hook = post_add_lazy_import_hook
         self.uncached_imports = set(uncached_imports)
@@ -132,6 +134,8 @@ class Monkay(
         *,
         on_conflict: Literal["error", "keep", "replace"] = "keep",
     ) -> None:
+        # set flag early so extensions can use settings when using evaluate_settings_once_on_access
+        self.settings_evaluated = True
         preloads = None
         if self.settings_preloads_name:
             preloads = get_value_from_settings(self.settings, self.settings_preloads_name)
@@ -148,7 +152,6 @@ class Monkay(
         if self.settings_extensions_name:
             for extension in get_value_from_settings(self.settings, self.settings_extensions_name):
                 self.add_extension(extension, use_overwrite=True, on_conflict=on_conflict)
-        self.settings_evaluated = True
 
     def evaluate_settings_once(
         self,

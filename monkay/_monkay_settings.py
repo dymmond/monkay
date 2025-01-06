@@ -13,6 +13,7 @@ from .types import SETTINGS
 
 class MonkaySettings(Generic[SETTINGS]):
     package: str | None
+    evaluate_settings_once_on_access: bool
     _settings_evaluated: bool = False
     settings_preloads_name: str
     settings_extensions_name: str
@@ -73,6 +74,8 @@ class MonkaySettings(Generic[SETTINGS]):
             raise RuntimeError(
                 "Settings are not set yet. Returned settings are None or settings_path is empty."
             )
+        if self.evaluate_settings_once_on_access:
+            self.evaluate_settings_once(on_conflict="keep")
         return settings
 
     @settings.setter

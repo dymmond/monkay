@@ -95,6 +95,11 @@ It is internally used by `evaluate_settings_once` and will also set the `setting
 Internally it is a property which sets the right flag. Either on the ContextVar or on the instance.
 It is resetted when assigning settings and initial False for `with_settings`.
 
+
+### `evaluate_settings_once_on_access` parameter
+
+You can also call
+
 ## Other settings types
 
 All of the assignment examples are also possible as settings_path parameter.
