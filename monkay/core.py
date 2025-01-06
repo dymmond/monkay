@@ -132,9 +132,13 @@ class Monkay(
         *,
         on_conflict: Literal["error", "keep", "replace"] = "keep",
     ) -> None:
+        # load settings one time and before setting settings_evaluated to True
+        settings = self.settings
+        self.settings_evaluated = True
+
         preloads = None
         if self.settings_preloads_name:
-            preloads = get_value_from_settings(self.settings, self.settings_preloads_name)
+            preloads = get_value_from_settings(settings, self.settings_preloads_name)
         if preloads:
             for preload in preloads:
                 splitted = preload.rsplit(":", 1)
@@ -146,9 +150,8 @@ class Monkay(
                     getattr(module, splitted[1])()
 
         if self.settings_extensions_name:
-            for extension in get_value_from_settings(self.settings, self.settings_extensions_name):
+            for extension in get_value_from_settings(settings, self.settings_extensions_name):
                 self.add_extension(extension, use_overwrite=True, on_conflict=on_conflict)
-        self.settings_evaluated = True
 
     def evaluate_settings_once(
         self,
