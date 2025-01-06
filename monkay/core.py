@@ -119,7 +119,7 @@ class Monkay(
         if evaluate_settings and self._settings_definition:
             # disables overwrite
             with self.with_settings(None):
-                self.evaluate_settings(on_conflict="error")
+                self.evaluate_settings_once(on_conflict="error")
 
     def clear_caches(self, settings_cache: bool = True, import_cache: bool = True) -> None:
         if settings_cache:
@@ -148,3 +148,21 @@ class Monkay(
         if self.settings_extensions_name:
             for extension in get_value_from_settings(self.settings, self.settings_extensions_name):
                 self.add_extension(extension, use_overwrite=True, on_conflict=on_conflict)
+        self.settings_evaluated = True
+
+    def evaluate_settings_once(
+        self,
+        *,
+        on_conflict: Literal["error", "keep", "replace"] = "error",
+        ignore_import_errors: bool = True,
+    ) -> bool:
+        if self.settings_evaluated:
+            return False
+        if ignore_import_errors:
+            try:
+                self.evaluate_settings(on_conflict=on_conflict)
+            except ImportError:
+                return False
+        else:
+            self.evaluate_settings(on_conflict=on_conflict)
+        return True

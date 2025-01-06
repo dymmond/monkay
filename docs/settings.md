@@ -65,14 +65,35 @@ else:
     monkay.settings = DebugSettings()
 
 # now the settings are applied
-monkay.evaluate_settings()
+monkay.evaluate_settings_once()
 ```
 
-### `evaluate_settings` parameters
+### `evaluate_settings_once` function
 
-`evaluate_settings` has following keyword only parameter:
+`evaluate_settings_once` has following keyword only parameter:
 
-- on_conflict: matches the values of add_extension but defaults to `keep`
+- `on_conflict`: Matches the values of add_extension but defaults to `error`.
+- `ignore_import_errors`: Suppress import errors. Defaults to `True`.
+
+When run successfully the context-aware flag `settings_evaluated` is set. If the flag is set,
+the function becomes a noop until the flag is lifted by assigning new settings.
+
+The return_value is `True` for a successful evaluation and `False` in the other case.
+
+### `evaluate_settings` function
+
+There is also`evaluate_settings` which evaluates always, not checking for if the settings were
+evaluated already and not optionally ignoring import errors.
+It has has following keyword only parameter:
+
+- `on_conflict`: Matches the values of add_extension but defaults to `keep`.
+
+It is internally used by `evaluate_settings_once` and will also set the `settings_evaluated` flag.
+
+### `settings_evaluated` flag
+
+Internally it is a property which sets the right flag. Either on the ContextVar or on the instance.
+It is resetted when assigning settings and initial False for `with_settings`.
 
 ## Other settings types
 
@@ -106,3 +127,8 @@ settings = cast("EdgySettings", SettingsForward())
 __all__ = ["settings"]
 
 ```
+
+## Deleting settings
+
+You can delete settings by assigning one of "", None, False. Afterwards
+accessing settings will raise an error until set again.
