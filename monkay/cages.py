@@ -3,7 +3,7 @@ from __future__ import annotations
 import copy
 from collections.abc import Callable, Generator, Iterable
 from contextlib import AbstractContextManager, contextmanager, nullcontext
-from contextvars import ContextVar
+from contextvars import ContextVar, Token
 from functools import wraps
 from importlib import import_module
 from inspect import ismethoddescriptor
@@ -15,8 +15,16 @@ class Undefined: ...
 
 
 T = TypeVar("T")
+DEFAULT = TypeVar("DEFAULT")
 
-forbidden_names = {"__getattribute__", "__setattr__", "__delattr__", "__new__", "__init__"}
+forbidden_names: set[str] = {
+    "__getattribute__",
+    "__setattr__",
+    "__delattr__",
+    "__new__",
+    "__init__",
+}
+context_var_attributes: set[str] = {"name", "get", "set", "reset"}
 
 
 class Cage(Generic[T]):
@@ -24,6 +32,7 @@ class Cage(Generic[T]):
     monkay_deep_copy: bool
     monkay_use_wrapper_for_reads: bool
     monkay_update_fn: Callable[[T, T], T] | None
+    monkay_name: str
     monkay_original: T
     monkay_original_last_update: int
     monkay_original_last_update_lock: None | Lock
@@ -74,6 +83,7 @@ class Cage(Generic[T]):
         attrs["__new__"] = object.__new__
         monkay_cage_cls = type(cls.__name__, (cls,), attrs)
         monkay_cage_instance = monkay_cage_cls()
+        monkay_cage_instance.monkay_name = name
         monkay_cage_instance.monkay_context_var = globals_dict[context_var_name] = ContextVar(
             context_var_name, default=Undefined
         )
@@ -178,7 +188,7 @@ class Cage(Generic[T]):
     @contextmanager
     def monkay_with_override(self, value: T) -> Generator[T]:
         monkay_dict = super().__getattribute__("__dict__")
-        token = monkay_dict["monkay_context_var"].set(value)
+        token = monkay_dict["monkay_context_var"].set((None, value))
         try:
             yield value
         finally:
@@ -195,3 +205,31 @@ class Cage(Generic[T]):
             if update_after and monkay_dict["monkay_original_last_update_lock"] is not None:
                 with monkay_dict["monkay_original_last_update_lock"]:
                     monkay_dict["monkay_original_last_update"] += 1
+
+    def monkay_set(self, value: T) -> Token:
+        monkay_dict = super().__getattribute__("__dict__")
+        return monkay_dict["monkay_context_var"].set(
+            (monkay_dict["monkay_original_last_update"], value)
+        )
+
+    def monkay_get(self, default: T | DEFAULT = None) -> T | DEFAULT:
+        monkay_dict = super().__getattribute__("__dict__")
+        tup = monkay_dict["monkay_context_var"].get()
+        if tup is Undefined:
+            original: T | Undefined = monkay_dict["monkay_original"]
+            if original is Undefined:
+                return default
+            else:
+                return original
+        else:
+            return tup[1]
+
+    def monkay_reset(self, token: Token):
+        self.monkay_context_var.reset(token)
+
+
+class TransparentCage(Cage):
+    def __getattribute__(self, name: str) -> Any:
+        if name in context_var_attributes:
+            name = f"monkay_{name}"
+        return super().__getattribute__(name)

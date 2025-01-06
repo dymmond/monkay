@@ -5,7 +5,7 @@ from threading import Lock
 
 import pytest
 
-from monkay import Cage
+from monkay import Cage, TransparentCage
 
 target_ro = {"foo": "bar"}
 
@@ -15,6 +15,10 @@ target1_caged: dict
 Cage(globals(), {"caged": "monkey"}, name="target1_caged")
 target2_caged: set = {500000, 600000}
 Cage(globals(), {1, 2, 4}, name="target2_caged", update_fn=lambda private, new: private.union(new))
+
+transparent_cage = TransparentCage(
+    globals(), {1}, name="transparent_cage", skip_self_register=True
+)
 
 
 @pytest.fixture(autouse=True, scope="function")
@@ -69,6 +73,16 @@ def test_cages_retrieve_with_name():
     )
     assert type(globals()["target_ro"]) is not Cage
     assert isinstance(globals()["foo_cages_retrieve_with_name_ctx"], ContextVar)
+
+
+def test_transparent_cage():
+    assert transparent_cage.name == "transparent_cage"
+    assert transparent_cage.get() == {1}
+    assert transparent_cage == {1}
+    token = transparent_cage.set({2})
+    assert transparent_cage == {2}
+    transparent_cage.reset(token)
+    assert transparent_cage == {1}
 
 
 @pytest.mark.parametrize("read_lock", [True, False])

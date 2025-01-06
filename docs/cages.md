@@ -77,6 +77,19 @@ By default when no contextvariable was initialized the original is copied via `c
 By providing `deep_copy=True` `copy.deepcopy()` is used.
 
 
+## TransparentCage
+
+This is a subclass of Cage also exposing a ContextVar like interface. You can use them as container as well as a
+ContextVar.
+
+A simpler variant is just prefixing the ContextVar public methods and attributes:
+
+`name`, `set`, `reset` and `get` become
+
+`monkay_name`, `monkay_set`, `monkay_reset` and `monkay_get`.
+
+What TransparentCage is doing is just redirecting.
+
 ## Advanced
 
 ### New context variable name
