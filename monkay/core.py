@@ -48,6 +48,7 @@ class Monkay(
         skip_all_update: bool = False,
         skip_getattr_fixup: bool = False,
         evaluate_settings: bool = True,
+        ignore_settings_import_errors: bool = True,
         pre_add_lazy_import_hook: None | PRE_ADD_LAZY_IMPORT_HOOK = None,
         post_add_lazy_import_hook: None | Callable[[str], None] = None,
         package: str | None = "",
@@ -119,7 +120,9 @@ class Monkay(
         if evaluate_settings and self._settings_definition:
             # disables overwrite
             with self.with_settings(None):
-                self.evaluate_settings_once(on_conflict="error")
+                self.evaluate_settings_once(
+                    on_conflict="error", ignore_import_errors=ignore_settings_import_errors
+                )
 
     def clear_caches(self, settings_cache: bool = True, import_cache: bool = True) -> None:
         if settings_cache:

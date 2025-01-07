@@ -68,7 +68,7 @@ else:
 monkay.evaluate_settings_once()
 ```
 
-### `evaluate_settings_once` function
+### `evaluate_settings_once` method
 
 `evaluate_settings_once` has following keyword only parameter:
 
@@ -76,11 +76,11 @@ monkay.evaluate_settings_once()
 - `ignore_import_errors`: Suppress import errors. Defaults to `True`.
 
 When run successfully the context-aware flag `settings_evaluated` is set. If the flag is set,
-the function becomes a noop until the flag is lifted by assigning new settings.
+the method becomes a noop until the flag is lifted by assigning new settings.
 
 The return_value is `True` for a successful evaluation and `False` in the other case.
 
-### `evaluate_settings` function
+### `evaluate_settings` method
 
 There is also`evaluate_settings` which evaluates always, not checking for if the settings were
 evaluated already and not optionally ignoring import errors.

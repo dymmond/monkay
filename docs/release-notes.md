@@ -12,7 +12,10 @@
 
 ### Changed
 
-- The Monkay `__init__` uses `evaluate_settings_once`.
+- The Monkay `__init__` uses `evaluate_settings_once` instead `evaluate_settings`. This method is more lenient to import errors.
+  You should check the `settings_evaluated` flag and/or maybe call `evaluate_settings_once(ignore_import_errors=False)` in code pathes where extensions and/or
+  preloads are required.
+  You can also uncloak such errors by passing: `ignore_settings_import_errors=False`.
 - Deleting the settings via assignment now also invalidates the cache.
 
 ### Fixed
