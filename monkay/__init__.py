@@ -9,7 +9,7 @@ from .base import (
     load,
     load_any,
 )
-from .cages import Cage
+from .cages import Cage, TransparentCage
 from .core import (
     Monkay,
 )
@@ -31,4 +31,5 @@ __all__ = [
     "InGlobalsDict",
     "get_value_from_settings",
     "Cage",
+    "TransparentCage",
 ]

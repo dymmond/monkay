@@ -47,6 +47,15 @@ with foo.monkay_with_original() as original:
 # thanks to the update function
 assert foo == ["updated", "a", "b"]
 ```
+### `monkay_with_override` method
+
+The monkay_with_override takes two arguments:
+
+- The overwrite value. Mandatory
+- `allow_value_update` (keyword-only). Default True.
+
+The last one is for updates to the original. When the original value is updated
+then the local value in the context variable is also updated.
 
 ### With thread Lock
 
@@ -76,6 +85,19 @@ Of course cages support also preloads. See [Tutorial](./tutorial.md) for example
 By default when no contextvariable was initialized the original is copied via `copy.copy()` into the contextvariable.
 By providing `deep_copy=True` `copy.deepcopy()` is used.
 
+
+## TransparentCage
+
+This is a subclass of Cage also exposing a ContextVar like interface. You can use them as container as well as a
+ContextVar.
+
+A simpler variant is just prefixing the ContextVar public methods and attributes:
+
+`name`, `set`, `reset` and `get` become
+
+`monkay_name`, `monkay_set`, `monkay_reset` and `monkay_get`.
+
+What TransparentCage is doing is just redirecting.
 
 ## Advanced
 

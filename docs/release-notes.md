@@ -6,6 +6,9 @@
 ### Added
 
 - Add `evaluate_settings_once`.
+- Add TransparentCage, which also exposes the ContextVar interface.
+- Add `monkay_` prefixed ContextVar-like attributes and methods.
+- Add optional `allow_value_update` to `monkay_with_override` method on cage.
 
 ### Changed
 
@@ -15,6 +18,7 @@
 ### Fixed
 
 - Assigning an empty dictionary to settings deletes the settings. This should only work for some falsy values.
+- Cage `with_overwrite` didn't escape the last update compontent properly.
 
 ## Version 0.1.1
 
