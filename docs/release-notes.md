@@ -1,5 +1,11 @@
 # Release notes
 
+## Version 0.2.1
+
+### Fixed
+
+- Add AttributeError to the ignored import errors.
+- Wrong return value for `evaluate_settings_once` when already evaluated.
 
 ## Version 0.2.0
 

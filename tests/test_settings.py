@@ -54,7 +54,14 @@ def test_settings_overwrite():
         mod.monkay.evaluate_settings()
         assert mod.monkay.settings_evaluated
         # assert no evaluation anymore
-        assert not mod.monkay.evaluate_settings_once()
+        old_evaluate_settings = mod.monkay.evaluate_settings
+
+        def fake_evaluate():
+            raise
+
+        mod.monkay.evaluate_settings = fake_evaluate
+        assert mod.monkay.evaluate_settings_once()
+        mod.monkay.evaluate_settings = old_evaluate_settings
         assert "tests.targets.module_settings_preloaded" in sys.modules
 
         # overwriting settings doesn't affect temporary scope

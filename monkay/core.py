@@ -163,11 +163,11 @@ class Monkay(
         ignore_import_errors: bool = True,
     ) -> bool:
         if self.settings_evaluated:
-            return False
+            return True
         if ignore_import_errors:
             try:
                 self.evaluate_settings(on_conflict=on_conflict)
-            except ImportError:
+            except (ImportError, AttributeError):
                 return False
         else:
             self.evaluate_settings(on_conflict=on_conflict)
