@@ -73,12 +73,15 @@ monkay.evaluate_settings_once()
 `evaluate_settings_once` has following keyword only parameter:
 
 - `on_conflict`: Matches the values of add_extension but defaults to `error`.
-- `ignore_import_errors`: Suppress import errors. Defaults to `True`.
+- `ignore_import_errors`: Suppress import related errors. Handles unset settings lenient. Defaults to `True`.
 
 When run successfully the context-aware flag `settings_evaluated` is set. If the flag is set,
 the method becomes a noop until the flag is lifted by assigning new settings.
 
 The return_value is `True` for a successful evaluation and `False` in the other case.
+
+!!! Note
+    `ignore_import_errors` suppresses also UnsetError which is raised when the settings are unset.
 
 ### `evaluate_settings` method
 
@@ -90,10 +93,14 @@ It has has following keyword only parameter:
 
 It is internally used by `evaluate_settings_once` and will also set the `settings_evaluated` flag.
 
+!!! Note
+    `evaluate_settings` doesn't touch the settings when no `settings_preloads_name` and/or `settings_extensions_name` is set
+    but will still set the `settings_evaluated` flag to `True`.
+
 ### `settings_evaluated` flag
 
 Internally it is a property which sets the right flag. Either on the ContextVar or on the instance.
-It is resetted when assigning settings and initial False for `with_settings`.
+It is resetted when assigning settings and initial `False` for `with_settings`.
 
 ## Other settings types
 
@@ -125,8 +132,11 @@ class SettingsForward:
 settings = cast("EdgySettings", SettingsForward())
 
 __all__ = ["settings"]
-
 ```
+
+!!! Note
+    For enabling settings modifications, you may need to define `__setattr__`, `__delattr__` too.
+    It is however not recommended.
 
 ## Deleting settings
 

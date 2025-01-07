@@ -3,6 +3,8 @@ from pathlib import Path
 
 import pytest
 
+from monkay import UnsetError
+
 
 @pytest.fixture(autouse=True, scope="function")
 def cleanup():
@@ -30,6 +32,30 @@ def test_settings_basic():
     mod.monkay.settings = Settings
     mod.monkay.settings = "tests.targets.settings:hurray"
     assert mod.monkay.settings is hurray
+
+
+def test_disabled_settings():
+    import tests.targets.module_disabled_settings as mod
+
+    with pytest.raises(AssertionError):
+        mod.monkay.evaluate_settings_once()
+
+    with pytest.raises(AssertionError):
+        mod.monkay.settings  # noqa
+
+
+@pytest.mark.parametrize("value", [False, None, ""])
+def test_unset_settings(value):
+    import tests.targets.module_full as mod
+
+    mod.monkay.settings = value
+
+    mod.monkay.evaluate_settings_once()
+    with pytest.raises(UnsetError):
+        mod.monkay.evaluate_settings_once(ignore_import_errors=False)
+
+    with pytest.raises(UnsetError):
+        mod.monkay.settings  # noqa
 
 
 def test_settings_overwrite():

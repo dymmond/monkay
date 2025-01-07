@@ -7,7 +7,7 @@ from functools import cached_property
 from inspect import isclass
 from typing import Generic, cast
 
-from .base import load
+from .base import UnsetError, load
 from .types import SETTINGS
 
 
@@ -70,9 +70,7 @@ class MonkaySettings(Generic[SETTINGS]):
         if callable(settings):
             settings = settings()
         if settings is None:
-            raise RuntimeError(
-                "Settings are not set yet. Returned settings are None or settings_path is empty."
-            )
+            raise UnsetError("Settings are not set yet or the settings function returned None.")
         return settings
 
     @settings.setter

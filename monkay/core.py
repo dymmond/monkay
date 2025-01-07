@@ -12,7 +12,7 @@ from typing import (
 from ._monkay_exports import MonkayExports
 from ._monkay_instance import MonkayInstance
 from ._monkay_settings import MonkaySettings
-from .base import get_value_from_settings
+from .base import UnsetError, get_value_from_settings
 from .types import (
     INSTANCE,
     PRE_ADD_LAZY_IMPORT_HOOK,
@@ -36,7 +36,12 @@ class Monkay(
         with_extensions: str | bool = False,
         extension_order_key_fn: None
         | Callable[[ExtensionProtocol[INSTANCE, SETTINGS]], Any] = None,
-        settings_path: str | Callable[[], SETTINGS] | SETTINGS | type[SETTINGS] | None = None,
+        settings_path: str
+        | Callable[[], SETTINGS]
+        | SETTINGS
+        | type[SETTINGS]
+        | Literal[False]
+        | None = None,
         preloads: Iterable[str] = (),
         settings_preloads_name: str = "",
         settings_extensions_name: str = "",
@@ -76,7 +81,7 @@ class Monkay(
         if deprecated_lazy_imports:
             for name, deprecated_import in deprecated_lazy_imports.items():
                 self.add_deprecated_lazy_import(name, deprecated_import, no_hooks=True)
-        if settings_path is not None:
+        if settings_path is not None and settings_path is not False:
             self._settings_var = globals_dict[settings_ctx_name] = ContextVar(
                 settings_ctx_name, default=None
             )
@@ -117,7 +122,11 @@ class Monkay(
                 module = None
             if module is not None and len(splitted) == 2:
                 getattr(module, splitted[1])()
-        if evaluate_settings and self._settings_definition:
+        if (
+            evaluate_settings
+            and self._settings_definition is not None
+            and self._settings_definition != ""
+        ):
             # disables overwrite
             with self.with_settings(None):
                 self.evaluate_settings_once(
@@ -135,6 +144,11 @@ class Monkay(
         *,
         on_conflict: Literal["error", "keep", "replace"] = "keep",
     ) -> None:
+        # don't access settings when there is nothing to evaluate
+        if not self.settings_extensions_name and not self.settings_extensions_name:
+            self.settings_evaluated = True
+            return
+
         # load settings one time and before setting settings_evaluated to True
         settings = self.settings
         self.settings_evaluated = True
@@ -167,7 +181,7 @@ class Monkay(
         if ignore_import_errors:
             try:
                 self.evaluate_settings(on_conflict=on_conflict)
-            except (ImportError, AttributeError):
+            except (ImportError, AttributeError, UnsetError):
                 return False
         else:
             self.evaluate_settings(on_conflict=on_conflict)
