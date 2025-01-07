@@ -22,6 +22,7 @@ monkay = Monkay(
     with_instance=True,
     settings_path="settings_path:Settings",
     preloads=["tests.targets.module_full_preloaded1:load"],
+    # Warning: settings names have a catch
     settings_preloads_name="preloads",
     settings_extensions_name="extensions",
     uncached_imports=["settings"],
@@ -39,12 +40,18 @@ monkay = Monkay(
 )
 ```
 
-
 When providing your own `__all__` variable **after** providing Monkay or you want more controll, you can provide
 
 `skip_all_update=True`
 
 and update the `__all__` value via `Monkay.update_all_var` if wanted.
+
+!!! Warning
+    There is a catch when using `settings_preloads_name` and/or `settings_preloads_name`.
+    It is easy to run in circular dependency errors.
+    For fixing the initialization the errors are by default catched and ignored.
+    But this means, you have to apply them later via `evaluate_settings_once` later.
+    For more informations see [Settings preloads and/or extensions](#settings-extensions-andor-preloads)
 
 
 #### Lazy imports
@@ -188,6 +195,57 @@ monkay = Monkay(
 # attribute grabber with fallback to items
 get_value_from_settings(monkay.settings, "foo")
 ```
+#### Settings extensions and/or preloads
+
+When using `settings_preloads_name` and/or `settings_extensions_name` it is easy to run in circular dependency issues
+especcially with `pydantic_settings`.
+For mitigating this such import errors are catched and silenced in init.
+
+This means however the preloads are not loaded as well the extensions initialized.
+For initializing it later, we need `evaluate_settings_once`.
+
+Wherever the settings are expected we can add it.
+
+Example:
+
+```python title="edgy/settings/conf.py"
+from functools import lru_cache
+
+@lru_cache
+def get_edgy():
+    import edgy
+    edgy.monkay.evaluate_settings_once()
+    return edgy
+
+class SettingsForward:
+    def __getattribute__(self, name: str) -> Any:
+        return getattr(get_edgy().monkay.settings, name)
+
+settings = SettingsForward()
+```
+or
+
+```python title="foo/main.py"
+def get_application():
+    import foo
+    foo.monkay.evaluate_settings_once(ignore_import_errors=False)
+    app = App()
+
+    foo.monkay.set_instance(app)
+    return app
+
+app = get_application()
+```
+
+For performance reasons you may want to skip to try to import the settings in init:
+
+`evaluate_settings=False` will disable the evaluation.
+
+You may want to not silence the import error like in monkay `<2.0`, then pass
+
+`ignore_settings_import_errors=False` to the init.
+
+More information can be found in [Settings `evaluate_settings_once`](./settings.md#evaluate_settings_once-method)
 
 #### Pathes
 
