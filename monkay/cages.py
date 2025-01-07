@@ -221,11 +221,11 @@ class Cage(Generic[T]):
         if tup is Undefined:
             original: T | type[Undefined] = monkay_dict["monkay_original"]
             if original is not Undefined:
-                return cast(DEFAULT | None, original)
+                return cast("DEFAULT | None", original)
             else:
                 return default
         else:
-            return cast(tuple[int | None, T], tup)[1]
+            return cast("tuple[int | None, T]", tup)[1]
 
     def monkay_reset(self, token: Token):
         self.monkay_context_var.reset(token)
