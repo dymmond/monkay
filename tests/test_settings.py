@@ -44,6 +44,31 @@ def test_disabled_settings():
         mod.monkay.settings  # noqa
 
 
+def test_notfound_settings():
+    import tests.targets.module_notfound_settings as mod
+
+    assert not mod.monkay.settings_evaluated
+
+    mod.monkay.evaluate_settings_once()
+    assert not mod.monkay.settings_evaluated
+
+    with pytest.raises(ImportError):
+        mod.monkay.evaluate_settings_once(ignore_import_errors=False)
+
+
+def test_notevaluated_settings():
+    import tests.targets.module_notevaluated_settings as mod
+
+    assert mod.monkay.settings_evaluated
+
+    mod.monkay.evaluate_settings_once()
+    mod.monkay.evaluate_settings_once(ignore_import_errors=False)
+
+    # now evaluate settings
+    with pytest.raises(ImportError):
+        mod.monkay.settings  # noqa
+
+
 @pytest.mark.parametrize("value", [False, None, ""])
 def test_unset_settings(value):
     import tests.targets.module_full as mod

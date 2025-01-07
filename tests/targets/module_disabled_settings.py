@@ -14,7 +14,7 @@ class FakeApp:
     is_fake_app: bool = True
 
 
-__all__ = ["foo", "stringify_all"]  # noqa
+__all__ = ["foo"]  # noqa
 monkay = Monkay(
     globals(),
     with_extensions=True,
