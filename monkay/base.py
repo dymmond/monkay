@@ -59,8 +59,10 @@ def absolutify_import(import_path: str, package: str | None) -> str:
     return f"{package}.{import_path.lstrip('.')}"
 
 
-class InGlobalsDict(Exception):
-    pass
+class InGlobalsDict(Exception): ...
+
+
+class UnsetError(RuntimeError): ...
 
 
 def get_value_from_settings(settings: Any, name: str) -> Any:

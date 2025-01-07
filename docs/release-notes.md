@@ -1,5 +1,16 @@
 # Release notes
 
+## Version 0.2.2
+
+### Added
+
+- `UnsetError` for simpler checking if the settings are unset.
+
+### Fixed
+
+- Handle edge-cases better when settings are unset or disabled.
+- Don't touch settings in `evaluate_settings` when not required.
+
 ## Version 0.2.1
 
 ### Fixed

@@ -4,6 +4,7 @@
 
 from .base import (
     InGlobalsDict,
+    UnsetError,
     absolutify_import,
     get_value_from_settings,
     load,
@@ -29,6 +30,7 @@ __all__ = [
     "load_any",
     "absolutify_import",
     "InGlobalsDict",
+    "UnsetError",
     "get_value_from_settings",
     "Cage",
     "TransparentCage",
