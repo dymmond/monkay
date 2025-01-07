@@ -28,7 +28,7 @@ context_var_attributes: set[str] = {"name", "get", "set", "reset"}
 
 
 class Cage(Generic[T]):
-    monkay_context_var: ContextVar[tuple[int, T] | type[Undefined]]
+    monkay_context_var: ContextVar[tuple[int | None, T] | type[Undefined]]
     monkay_deep_copy: bool
     monkay_use_wrapper_for_reads: bool
     monkay_update_fn: Callable[[T, T], T] | None
@@ -144,6 +144,7 @@ class Cage(Generic[T]):
             obj = self.monkay_refresh_copy(_monkay_dict=_monkay_dict)
         elif (
             _monkay_dict["monkay_update_fn"] is not None
+            and tup[0] is not None
             and tup[0] != _monkay_dict["monkay_original_last_update"]
         ):
             with _monkay_dict["monkay_original_wrapper"] if use_wrapper else nullcontext():
@@ -212,17 +213,17 @@ class Cage(Generic[T]):
             (monkay_dict["monkay_original_last_update"], value)
         )
 
-    def monkay_get(self, default: T | DEFAULT = None) -> T | DEFAULT:
+    def monkay_get(self, default: T | DEFAULT | None = None) -> T | DEFAULT | None:
         monkay_dict = super().__getattribute__("__dict__")
-        tup = monkay_dict["monkay_context_var"].get()
+        tup: type[Undefined] | tuple[int | None, T] = monkay_dict["monkay_context_var"].get()
         if tup is Undefined:
             original: T | Undefined = monkay_dict["monkay_original"]
-            if original is Undefined:
-                return default
+            if original is not Undefined:
+                return cast(DEFAULT | None, original)
             else:
-                return original
+                return default
         else:
-            return tup[1]
+            return cast(tuple[int | None, T], tup)[1]
 
     def monkay_reset(self, token: Token):
         self.monkay_context_var.reset(token)
