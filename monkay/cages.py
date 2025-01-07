@@ -219,7 +219,7 @@ class Cage(Generic[T]):
         monkay_dict = super().__getattribute__("__dict__")
         tup: type[Undefined] | tuple[int | None, T] = monkay_dict["monkay_context_var"].get()
         if tup is Undefined:
-            original: T | Undefined = monkay_dict["monkay_original"]
+            original: T | type[Undefined] = monkay_dict["monkay_original"]
             if original is not Undefined:
                 return cast(DEFAULT | None, original)
             else:
