@@ -241,7 +241,7 @@ For performance reasons you may want to skip to try to import the settings in in
 
 `evaluate_settings=False` will disable the evaluation.
 
-You may want to not silence the import error like in monkay `<2.0`, then pass
+You may want to not silence the import error like in monkay `<0.2.0`, then pass
 
 `ignore_settings_import_errors=False` to the init.
 
