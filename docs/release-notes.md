@@ -8,6 +8,7 @@
 - Add `evaluate_settings_once`.
 - Add TransparentCage, which also exposes the ContextVar interface.
 - Add `monkay_` prefixed ContextVar-like attributes and methods.
+- Add optional `allow_value_update` to `monkay_with_override` method on cage.
 
 ### Changed
 

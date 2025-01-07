@@ -187,9 +187,11 @@ class Cage(Generic[T]):
         return self.monkay_conditional_update_copy(use_wrapper=use_wrapper)
 
     @contextmanager
-    def monkay_with_override(self, value: T) -> Generator[T]:
+    def monkay_with_override(self, value: T, *, allow_value_update: bool = True) -> Generator[T]:
         monkay_dict = super().__getattribute__("__dict__")
-        token = monkay_dict["monkay_context_var"].set((None, value))
+        token = monkay_dict["monkay_context_var"].set(
+            (monkay_dict["monkay_original_last_update"] if allow_value_update else None, value)
+        )
         try:
             yield value
         finally:

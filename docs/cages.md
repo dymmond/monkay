@@ -47,6 +47,15 @@ with foo.monkay_with_original() as original:
 # thanks to the update function
 assert foo == ["updated", "a", "b"]
 ```
+### `monkay_with_override` method
+
+The monkay_with_override takes two arguments:
+
+- The overwrite value. Mandatory
+- `allow_value_update` (keyword-only). Default True.
+
+The last one is for updates to the original. When the original value is updated
+then the local value in the context variable is also updated.
 
 ### With thread Lock
 

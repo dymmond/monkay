@@ -12,7 +12,12 @@ target_ro = {"foo": "bar"}
 target1_raw = {"foo": "bar"}
 target2_raw = {1, 2, 4}
 target1_caged: dict
-Cage(globals(), {"caged": "monkey"}, name="target1_caged")
+Cage(
+    globals(),
+    {"caged": "monkey"},
+    name="target1_caged",
+    update_fn=lambda private, new: {**new, **private},
+)
 target2_caged: set = {500000, 600000}
 Cage(globals(), {1, 2, 4}, name="target2_caged", update_fn=lambda private, new: private.union(new))
 
@@ -32,6 +37,24 @@ def test_cages_overwrite():
     assert 500000 not in target2_caged
     assert 600000 not in target2_caged
     assert 1 in target2_caged
+
+
+def test_cages_override():
+    # for preventing linting issues
+    target1_caged = globals()["target1_caged"]
+    assert target1_caged == {"caged": "monkey"}
+
+    with target1_caged.monkay_with_override({"caged": "lion"}):
+        assert target1_caged == {"caged": "lion"}
+        with target1_caged.monkay_with_override({"caged": "zebra"}, allow_value_update=False):
+            assert target1_caged == {"caged": "zebra"}
+            with target1_caged.monkay_with_original() as original:
+                original["elephant"] = True
+            assert target1_caged == {"caged": "zebra"}
+        # should affect override
+        assert target1_caged == {"caged": "lion", "elephant": True}
+    # should affect the new version
+    assert target1_caged == {"caged": "monkey", "elephant": True}
 
 
 def test_cages_preload_and_register():
