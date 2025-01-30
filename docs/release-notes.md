@@ -1,5 +1,18 @@
 # Release notes
 
+## Version 0.3.0
+
+### Breaking
+
+This is an emergency release. It removes the feature that implicitly evaluates settings during `__init__`. This
+is very error prone and can lead to two different versions of the same library in case the sys.path is manipulated.
+
+### Changes
+
+- `evaluate_settings` behaves like `evaluate_settings_once`. We will need this too often now and having two versions is error-prone.
+- `evaluate_settings_once` is deprecated.
+- Setting the `evaluate_settings` parameter in `__init__` is now an error.
+
 ## Version 0.2.2
 
 ### Added

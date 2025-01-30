@@ -21,3 +21,4 @@ monkay = Monkay(
     with_instance=True,
     settings_path="tests.targets.not_existing_settings_path:Settings",
 )
+monkay.evaluate_settings()

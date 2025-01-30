@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import warnings
 from collections.abc import Callable, Iterable
 from contextvars import ContextVar
 from importlib import import_module
@@ -52,7 +53,7 @@ class Monkay(
         extensions_applied_ctx_name: str = "monkay_extensions_applied_ctx",
         skip_all_update: bool = False,
         skip_getattr_fixup: bool = False,
-        evaluate_settings: bool = True,
+        evaluate_settings: None = None,
         ignore_settings_import_errors: bool = True,
         pre_add_lazy_import_hook: None | PRE_ADD_LAZY_IMPORT_HOOK = None,
         post_add_lazy_import_hook: None | Callable[[str], None] = None,
@@ -122,16 +123,10 @@ class Monkay(
                 module = None
             if module is not None and len(splitted) == 2:
                 getattr(module, splitted[1])()
-        if (
-            evaluate_settings
-            and self._settings_definition is not None
-            and self._settings_definition != ""
-        ):
-            # disables overwrite
-            with self.with_settings(None):
-                self.evaluate_settings_once(
-                    on_conflict="error", ignore_import_errors=ignore_settings_import_errors
-                )
+        if evaluate_settings is not None:
+            raise Exception(
+                "This feature and the evaluate_settings parameter are removed in monkay 0.3"
+            )
 
     def clear_caches(self, settings_cache: bool = True, import_cache: bool = True) -> None:
         if settings_cache:
@@ -139,7 +134,7 @@ class Monkay(
         if import_cache:
             self._cached_imports.clear()
 
-    def evaluate_settings(
+    def _evaluate_settings(
         self,
         *,
         on_conflict: Literal["error", "keep", "replace"] = "keep",
@@ -170,19 +165,34 @@ class Monkay(
             for extension in get_value_from_settings(settings, self.settings_extensions_name):
                 self.add_extension(extension, use_overwrite=True, on_conflict=on_conflict)
 
+    def evaluate_settings(
+        self,
+        *,
+        on_conflict: Literal["error", "keep", "replace"] = "error",
+        ignore_import_errors: bool = True,
+        onetime: bool = True,
+    ) -> bool:
+        if onetime and self.settings_evaluated:
+            return True
+        if ignore_import_errors:
+            try:
+                self._evaluate_settings(on_conflict=on_conflict)
+            except (ImportError, AttributeError, UnsetError):
+                return False
+        else:
+            self._evaluate_settings(on_conflict=on_conflict)
+        return True
+
     def evaluate_settings_once(
         self,
         *,
         on_conflict: Literal["error", "keep", "replace"] = "error",
         ignore_import_errors: bool = True,
     ) -> bool:
-        if self.settings_evaluated:
-            return True
-        if ignore_import_errors:
-            try:
-                self.evaluate_settings(on_conflict=on_conflict)
-            except (ImportError, AttributeError, UnsetError):
-                return False
-        else:
-            self.evaluate_settings(on_conflict=on_conflict)
-        return True
+        warnings.warn(
+            "`evaluate_settings_once` is deprecated. Use `evaluate_settings` instead. It has now the same functionality.",
+            stacklevel=2,
+        )
+        return self.evaluate_settings(
+            on_conflict=on_conflict, ignore_import_errors=ignore_import_errors, onetime=True
+        )
