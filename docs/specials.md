@@ -130,7 +130,8 @@ with monkay.with_settings(Settings()) as new_settings:
 
 ## `evaluate_preloads`
 
-`evaluate_preloads` is a way to load preloads everywhere in the application.
+`evaluate_preloads` is a way to load preloads everywhere in the application. It returns True if all preloads succeeded.
+This is useful together with `ignore_import_errors=True`.
 
 ### Parameters
 
@@ -139,7 +140,7 @@ with monkay.with_settings(Settings()) as new_settings:
   strings must be available. When `False` all must be available.
 - `package` (Optional). Provide a different package as parent package. By default (when empty) the package of the Monkay instance is used.
 
-Note: `monkay.base` contains a slightly different `evaluate_preloads` which uses when no package is provided the None package. It doesn't require
+Note: `monkay.base` contains a slightly different `evaluate_preloads` which uses when no package is provided the `None` package. It doesn't require
 an Monkay instance either.
 
 ## Typings
@@ -152,7 +153,6 @@ Monkay features also a protocol type for extensions: `ExtensionProtocol`.
 This is protocol is runtime checkable and has also support for both paramers.
 
 Here a combined example:
-
 
 ```python
 from dataclasses import dataclass

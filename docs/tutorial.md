@@ -44,12 +44,14 @@ monkay = Monkay(
 from foo import monkay
 def get_application():
     # sys.path updates
-    monkay.evaluate_settings(prelo)
-
-
+    important_preloads =[...]
+    monkay.evaluate_preloads(important_preloads, ignore_import_errors=False)
+    extra_preloads =[...]
+    monkay.evaluate_preloads(extra_preloads)
+    monkay.evaluate_settings()
 ```
 
-When providing your own `__all__` variable **after** providing Monkay or you want more controll, you can provide
+When providing your own `__all__` variable **after** providing Monkay or you want more control, you can provide
 
 `skip_all_update=True`
 
@@ -232,7 +234,7 @@ from functools import lru_cache
 @lru_cache
 def get_edgy():
     import edgy
-    edgy.monkay.evaluate_settings()
+    edgy.monkay.evaluate_settings(ignore_import_errors=False)
     return edgy
 
 class SettingsForward:
@@ -254,10 +256,6 @@ def get_application():
 
 app = get_application()
 ```
-
-For performance reasons you may want to skip to try to import the settings in init:
-
-`evaluate_settings=False` will disable the evaluation.
 
 You may want to not silence the import error like in monkay `<0.2.0`, then pass
 
@@ -308,7 +306,6 @@ parameter.
 
 For entrypoints you can set now the instance via `set_instance`. A good entrypoint is the init and using the settings:
 
-
 ``` python title="__init__.py"
 import os
 from monkay import Monkay, load
@@ -324,7 +321,6 @@ monkay = Monkay(
 
 monkay.evaluate_settings()
 monkay.set_instance(load(settings.APP_PATH))
-
 ```
 
 #### Using the extensions feature
