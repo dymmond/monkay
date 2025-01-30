@@ -64,6 +64,26 @@ else:
 monkay.evaluate_settings()
 ```
 
+## Multi stage settings setup
+
+By passing `ignore_import_errors=True` we can check multiple pathes if the config could load. We get a False as return value in case of not.
+
+``` python
+import os
+from monkay import Monkay
+
+monkay = Monkay(
+    globals(),
+    # required for initializing settings feature
+    settings_path=""
+)
+
+def find_settings():
+    for path in ["a.settings", "b.settings.develop"]:
+        if monkay.evaluate_settings(ignore_import_errors=True):
+            break
+```
+
 ### `evaluate_settings` method
 
 There is also`evaluate_settings` which evaluates always, not checking for if the settings were
@@ -73,8 +93,8 @@ It has has following keyword only parameter:
 
 - `on_conflict`: Matches the values of add_extension but defaults to `error`.
 - `onetime`: Evaluates the settings only one the first call. All other calls become noops. Defaults to `True`.
-- `ignore_import_errors`: Suppress import related errors. Handles unset settings lenient. Defaults to `True`.
-
+- `ignore_import_errors`: Suppress import related errors concerning settings. Handles unset settings lenient. Defaults to `False`.
+- `ignore_preload_import_errors`: Suppress import related errors concerning preloads in settings. Defaults to `True`.
 
 !!! Note
     `evaluate_settings` doesn't touch the settings when no `settings_preloads_name` and/or `settings_extensions_name` is set

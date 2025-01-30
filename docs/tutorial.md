@@ -10,9 +10,9 @@ pip install monkay
 
 ### Usage
 
-Probably in the main `__init__.py` you define something like this:
+Probably you define something like this:
 
-``` python
+``` python title="foo/__init__.py"
 from monkay import Monkay
 
 monkay = Monkay(
@@ -38,6 +38,15 @@ monkay = Monkay(
         }
     },
 )
+```
+
+``` python title="foo/main.py"
+from foo import monkay
+def get_application():
+    # sys.path updates
+    monkay.evaluate_settings(prelo)
+
+
 ```
 
 When providing your own `__all__` variable **after** providing Monkay or you want more controll, you can provide
@@ -131,10 +140,11 @@ class Settings(BaseSettings):
 
 def get_application():
     # initialize the loaders/sys.path
+    # add additional preloads
+    monkay.evaluate_preloads(...)
     monkay.evaluate_settings()
 
 app = get_application()
-
 ```
 
 And voila settings are now available from monkay.settings as well as settings. This works only when all settings arguments are
@@ -286,8 +296,10 @@ class Settings(BaseSettings):
     preloads: list[str] = ["preloader:preloader"]
 ```
 
-!!! Note
-    Settings preloads are only executed after executing `evaluate_settings()`. Preloads given in the `__init__` instantly.
+!!! Warning
+    Settings preloads are only executed after executing `evaluate_settings()`. Preloads given in the `__init__` are evaluated instantly.
+    You can however call `evaluate_preloads` directly.
+
 
 #### Using the instance feature
 

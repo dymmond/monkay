@@ -6,12 +6,18 @@
 
 This is an emergency release. It removes the feature that implicitly evaluates settings during `__init__`. This
 is very error prone and can lead to two different versions of the same library in case the sys.path is manipulated.
+Also failed imports are not neccessarily side-effect free.
+
+### Added
+
+- `evaluate_settings` has now two extra keyword parameters: `onetime` and `ignore_preload_import_errors`.
 
 ### Changes
 
-- `evaluate_settings` behaves like `evaluate_settings_once`. We will need this too often now and having two versions is error-prone.
-- `evaluate_settings_once` is deprecated.
+- `evaluate_settings` behaves like `evaluate_settings_once`. We will need this too often now and having two similar named versions is error-prone.
+- `evaluate_settings_once` is now deprecated.
 - Setting the `evaluate_settings` parameter in `__init__` is now an error.
+- For the parameter `ignore_import_errors` of `evaluate_settings` the default value is changed to `False`.
 
 ## Version 0.2.2
 

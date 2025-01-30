@@ -49,11 +49,11 @@ def test_notfound_settings():
 
     assert not mod.monkay.settings_evaluated
 
-    mod.monkay.evaluate_settings()
+    mod.monkay.evaluate_settings(ignore_import_errors=True)
     assert not mod.monkay.settings_evaluated
 
     with pytest.raises(ImportError):
-        mod.monkay.evaluate_settings(ignore_import_errors=False)
+        mod.monkay.evaluate_settings()
 
 
 def test_notevaluated_settings():
@@ -75,9 +75,9 @@ def test_unset_settings(value):
 
     mod.monkay.settings = value
 
-    mod.monkay.evaluate_settings()
+    mod.monkay.evaluate_settings(ignore_import_errors=True)
     with pytest.raises(UnsetError):
-        mod.monkay.evaluate_settings(ignore_import_errors=False)
+        mod.monkay.evaluate_settings()
 
     with pytest.raises(UnsetError):
         mod.monkay.settings  # noqa
