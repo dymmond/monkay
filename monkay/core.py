@@ -190,7 +190,7 @@ class Monkay(
         # don't access settings when there is nothing to evaluate
         if not self.settings_extensions_name and not self.settings_extensions_name:
             self.settings_evaluated = True
-            return
+            return True
 
         try:
             # load settings one time and before setting settings_evaluated to True
