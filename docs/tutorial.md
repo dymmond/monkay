@@ -10,9 +10,9 @@ pip install monkay
 
 ### Usage
 
-Probably in the main `__init__.py` you define something like this:
+Probably you define something like this:
 
-``` python
+``` python title="foo/__init__.py"
 from monkay import Monkay
 
 monkay = Monkay(
@@ -40,7 +40,18 @@ monkay = Monkay(
 )
 ```
 
-When providing your own `__all__` variable **after** providing Monkay or you want more controll, you can provide
+``` python title="foo/main.py"
+from foo import monkay
+def get_application():
+    # sys.path updates
+    important_preloads =[...]
+    monkay.evaluate_preloads(important_preloads, ignore_import_errors=False)
+    extra_preloads =[...]
+    monkay.evaluate_preloads(extra_preloads)
+    monkay.evaluate_settings()
+```
+
+When providing your own `__all__` variable **after** providing Monkay or you want more control, you can provide
 
 `skip_all_update=True`
 
@@ -49,8 +60,7 @@ and update the `__all__` value via `Monkay.update_all_var` if wanted.
 !!! Warning
     There is a catch when using `settings_preloads_name` and/or `settings_preloads_name`.
     It is easy to run in circular dependency errors.
-    For fixing the initialization the errors are by default catched and ignored.
-    But this means, you have to apply them later via `evaluate_settings_once` later.
+    But this means, you have to apply them later via `evaluate_settings` later.
     For more informations see [Settings preloads and/or extensions](#settings-extensions-andor-preloads)
 
 
@@ -128,6 +138,17 @@ class Settings(BaseSettings):
     extensions: list[Any] = []
 ```
 
+``` python title="main.py"
+
+def get_application():
+    # initialize the loaders/sys.path
+    # add additional preloads
+    monkay.evaluate_preloads(...)
+    monkay.evaluate_settings()
+
+app = get_application()
+```
+
 And voila settings are now available from monkay.settings as well as settings. This works only when all settings arguments are
 set via environment or defaults.
 Note the `uncached_imports`. Because temporary overwrites should be possible, we should not cache this import. The settings
@@ -197,12 +218,11 @@ get_value_from_settings(monkay.settings, "foo")
 ```
 #### Settings extensions and/or preloads
 
-When using `settings_preloads_name` and/or `settings_extensions_name` it is easy to run in circular dependency issues
-especcially with `pydantic_settings`.
-For mitigating this such import errors are catched and silenced in init.
+When using `settings_preloads_name` and/or `settings_extensions_name` we need to call in the setup of the application
+`evaluate_settings()`. Otherwise we may would end up with circular depdendencies, missing imports and wrong library versions.
 
 This means however the preloads are not loaded as well the extensions initialized.
-For initializing it later, we need `evaluate_settings_once`.
+For initializing it later, we need `evaluate_settings`.
 
 Wherever the settings are expected we can add it.
 
@@ -214,7 +234,7 @@ from functools import lru_cache
 @lru_cache
 def get_edgy():
     import edgy
-    edgy.monkay.evaluate_settings_once()
+    edgy.monkay.evaluate_settings(ignore_import_errors=False)
     return edgy
 
 class SettingsForward:
@@ -228,7 +248,7 @@ or
 ```python title="foo/main.py"
 def get_application():
     import foo
-    foo.monkay.evaluate_settings_once(ignore_import_errors=False)
+    foo.monkay.evaluate_settings(ignore_import_errors=False)
     app = App()
 
     foo.monkay.set_instance(app)
@@ -237,15 +257,11 @@ def get_application():
 app = get_application()
 ```
 
-For performance reasons you may want to skip to try to import the settings in init:
-
-`evaluate_settings=False` will disable the evaluation.
-
 You may want to not silence the import error like in monkay `<0.2.0`, then pass
 
 `ignore_settings_import_errors=False` to the init.
 
-More information can be found in [Settings `evaluate_settings_once`](./settings.md#evaluate_settings_once-method)
+More information can be found in [Settings `evaluate_settings`](./settings.md#evaluate_settings-method)
 
 #### Pathes
 
@@ -278,13 +294,17 @@ class Settings(BaseSettings):
     preloads: list[str] = ["preloader:preloader"]
 ```
 
+!!! Warning
+    Settings preloads are only executed after executing `evaluate_settings()`. Preloads given in the `__init__` are evaluated instantly.
+    You can however call `evaluate_preloads` directly.
+
+
 #### Using the instance feature
 
 The instance feature is activated by providing a boolean (or a string for an explicit name) to the `with_instance`
 parameter.
 
 For entrypoints you can set now the instance via `set_instance`. A good entrypoint is the init and using the settings:
-
 
 ``` python title="__init__.py"
 import os
@@ -299,6 +319,7 @@ monkay = Monkay(
     settings_extensions_name="extensions",
 )
 
+monkay.evaluate_settings()
 monkay.set_instance(load(settings.APP_PATH))
 ```
 
@@ -340,7 +361,6 @@ class Settings(BaseSettings):
     preloads: list[str] = ["preloader:preloader"]
     extensions: list[Any] = [Extension]
     APP_PATH: str = "settings.App"
-
 ```
 
 ##### Reordering extension order dynamically
@@ -357,7 +377,6 @@ There is a second more complicated way to reorder:
 via the parameter `extension_order_key_fn`. It takes a key function which is expected to return a lexicographic key capable for ordering.
 
 You can however intermix both.
-
 
 ## Tricks
 
@@ -385,14 +404,12 @@ monkay = Monkay(
 )
 ```
 
-
 ### Static `__all__`
 
 For autocompletions it is helpful to have a static `__all__` variable because many tools parse the sourcecode.
 Handling the `__all__` manually is for small imports easy but for bigger projects problematic.
 
 Let's extend the former example:
-
 
 ``` python
 

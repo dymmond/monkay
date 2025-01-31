@@ -38,7 +38,7 @@ def test_disabled_settings():
     import tests.targets.module_disabled_settings as mod
 
     with pytest.raises(AssertionError):
-        mod.monkay.evaluate_settings_once()
+        mod.monkay.evaluate_settings()
 
     with pytest.raises(AssertionError):
         mod.monkay.settings  # noqa
@@ -49,11 +49,11 @@ def test_notfound_settings():
 
     assert not mod.monkay.settings_evaluated
 
-    mod.monkay.evaluate_settings_once()
+    mod.monkay.evaluate_settings(ignore_import_errors=True)
     assert not mod.monkay.settings_evaluated
 
     with pytest.raises(ImportError):
-        mod.monkay.evaluate_settings_once(ignore_import_errors=False)
+        mod.monkay.evaluate_settings()
 
 
 def test_notevaluated_settings():
@@ -61,8 +61,8 @@ def test_notevaluated_settings():
 
     assert mod.monkay.settings_evaluated
 
-    mod.monkay.evaluate_settings_once()
-    mod.monkay.evaluate_settings_once(ignore_import_errors=False)
+    mod.monkay.evaluate_settings()
+    mod.monkay.evaluate_settings(ignore_import_errors=False)
 
     # now evaluate settings
     with pytest.raises(ImportError):
@@ -75,9 +75,9 @@ def test_unset_settings(value):
 
     mod.monkay.settings = value
 
-    mod.monkay.evaluate_settings_once()
+    mod.monkay.evaluate_settings(ignore_import_errors=True)
     with pytest.raises(UnsetError):
-        mod.monkay.evaluate_settings_once(ignore_import_errors=False)
+        mod.monkay.evaluate_settings()
 
     with pytest.raises(UnsetError):
         mod.monkay.settings  # noqa
@@ -102,17 +102,17 @@ def test_settings_overwrite():
         assert mod.monkay.settings is yielded
         assert mod.monkay.settings is not old_settings
         assert "tests.targets.module_settings_preloaded" not in sys.modules
-        mod.monkay.evaluate_settings()
+        mod.monkay.evaluate_settings(onetime=False, on_conflict="keep")
         assert mod.monkay.settings_evaluated
         # assert no evaluation anymore
-        old_evaluate_settings = mod.monkay.evaluate_settings
+        old_evaluate_settings = mod.monkay._evaluate_settings
 
         def fake_evaluate():
             raise
 
-        mod.monkay.evaluate_settings = fake_evaluate
-        assert mod.monkay.evaluate_settings_once()
-        mod.monkay.evaluate_settings = old_evaluate_settings
+        mod.monkay._evaluate_settings = fake_evaluate
+        assert mod.monkay.evaluate_settings()
+        mod.monkay._evaluate_settings = old_evaluate_settings
         assert "tests.targets.module_settings_preloaded" in sys.modules
 
         # overwriting settings doesn't affect temporary scope
@@ -140,9 +140,9 @@ def test_settings_overwrite_evaluate_modes(mode, transform):
         assert new_settings is not None
         if mode == "error":
             with pytest.raises(KeyError):
-                mod.monkay.evaluate_settings(on_conflict=mode)
+                mod.monkay.evaluate_settings(on_conflict=mode, onetime=False)
         else:
-            mod.monkay.evaluate_settings(on_conflict=mode)
+            mod.monkay.evaluate_settings(on_conflict=mode, onetime=False)
 
 
 @pytest.mark.parametrize("transform", [lambda x: x, lambda x: x.model_dump()])
@@ -160,4 +160,4 @@ def test_settings_overwrite_evaluate_no_conflict(transform):
         )
     ) as new_settings:
         assert new_settings is not None
-        mod.monkay.evaluate_settings(on_conflict="error")
+        mod.monkay.evaluate_settings(on_conflict="error", onetime=False)

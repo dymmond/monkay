@@ -38,10 +38,7 @@ child.monkay.settings = lambda: monkay.settings
 
 ## Lazy settings setup
 
-Like when using a settings forward it is possible to activate the settings later by assigning a string, a class or an settings instance
-to the settings attribute.
-For this provide an empty string to the settings_path variable.
-It ensures the initialization takes place.
+Settings are only evaluated when calling `evaluate_settings`. This means you can do a lazy setup like this:
 
 ``` python
 import os
@@ -49,9 +46,8 @@ from monkay import Monkay
 
 monkay = Monkay(
     globals(),
-    # required for initializing settings
+    # required for initializing settings feature
     settings_path=""
-    evaluate_settings=False
 )
 
 # somewhere later
@@ -65,37 +61,47 @@ else:
     monkay.settings = DebugSettings()
 
 # now the settings are applied
-monkay.evaluate_settings_once()
+monkay.evaluate_settings()
 ```
 
-### `evaluate_settings_once` method
+## Multi stage settings setup
 
-`evaluate_settings_once` has following keyword only parameter:
+By passing `ignore_import_errors=True` we can check multiple pathes if the config could load. We get a False as return value in case of not.
 
-- `on_conflict`: Matches the values of add_extension but defaults to `error`.
-- `ignore_import_errors`: Suppress import related errors. Handles unset settings lenient. Defaults to `True`.
+``` python
+import os
+from monkay import Monkay
 
-When run successfully the context-aware flag `settings_evaluated` is set. If the flag is set,
-the method becomes a noop until the flag is lifted by assigning new settings.
+monkay = Monkay(
+    globals(),
+    # required for initializing settings feature
+    settings_path=""
+)
 
-The return_value is `True` for a successful evaluation and `False` in the other case.
-
-!!! Note
-    `ignore_import_errors` suppresses also UnsetError which is raised when the settings are unset.
+def find_settings():
+    for path in ["a.settings", "b.settings.develop"]:
+        if monkay.evaluate_settings(ignore_import_errors=True):
+            break
+```
 
 ### `evaluate_settings` method
 
 There is also`evaluate_settings` which evaluates always, not checking for if the settings were
 evaluated already and not optionally ignoring import errors.
+The return_value is `True` for a successful evaluation and `False` in the other case.
 It has has following keyword only parameter:
 
-- `on_conflict`: Matches the values of add_extension but defaults to `keep`.
-
-It is internally used by `evaluate_settings_once` and will also set the `settings_evaluated` flag.
+- `on_conflict`: Matches the values of add_extension but defaults to `error`.
+- `onetime`: Evaluates the settings only one the first call. All other calls become noops. Defaults to `True`.
+- `ignore_import_errors`: Suppress import related errors concerning settings. Handles unset settings lenient. Defaults to `False`.
+- `ignore_preload_import_errors`: Suppress import related errors concerning preloads in settings. Defaults to `True`.
 
 !!! Note
     `evaluate_settings` doesn't touch the settings when no `settings_preloads_name` and/or `settings_extensions_name` is set
     but will still set the `settings_evaluated` flag to `True`.
+
+!!! Note
+    `ignore_import_errors` suppresses also UnsetError which is raised when the settings are unset.
 
 ### `settings_evaluated` flag
 

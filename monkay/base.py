@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import warnings
-from collections.abc import Collection
+from collections.abc import Collection, Iterable
 from importlib import import_module
 from typing import Any
 
@@ -70,3 +70,21 @@ def get_value_from_settings(settings: Any, name: str) -> Any:
         return getattr(settings, name)
     except AttributeError:
         return settings[name]
+
+
+def evaluate_preloads(
+    preloads: Iterable[str], *, ignore_import_errors: bool = True, package: str | None = None
+) -> bool:
+    no_errors: bool = True
+    for preload in preloads:
+        splitted = preload.rsplit(":", 1)
+        try:
+            module = import_module(splitted[0], package)
+        except (ImportError, AttributeError) as exc:
+            if not ignore_import_errors:
+                raise exc
+            no_errors = False
+            continue
+        if len(splitted) == 2:
+            getattr(module, splitted[1])()
+    return no_errors
