@@ -188,7 +188,7 @@ class Monkay(
         if onetime and initial_settings_evaluated:
             return True
         # don't access settings when there is nothing to evaluate
-        if not self.settings_extensions_name and not self.settings_extensions_name:
+        if not self.settings_preloads_name and not self.settings_extensions_name:
             self.settings_evaluated = True
             return True
 
