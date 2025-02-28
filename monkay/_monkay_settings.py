@@ -53,6 +53,7 @@ class MonkaySettings(Generic[SETTINGS]):
     a string representing a settings path, or a callable that returns a settings instance.
     This attribute provides flexibility in how settings are defined and loaded.
     """
+
     @cached_property
     def _loaded_settings(self) -> SETTINGS | None:
         """

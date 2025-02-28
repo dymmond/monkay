@@ -324,6 +324,7 @@ class MonkayExports:
         self.deprecated_lazy_imports[name] = value
         if not no_hooks and self.post_add_lazy_import_hook is not None:
             self.post_add_lazy_import_hook(name)
+
     def sorted_exports(
         self,
         all_var: Collection[str] | None = None,

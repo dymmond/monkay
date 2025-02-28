@@ -35,6 +35,7 @@ class SortedExportsEntry(NamedTuple):
     This class encapsulates information about a module export, including its category,
     name, and path.
     """
+
     category: Literal["other", "lazy_import", "deprecated_lazy_import"]
     """The category of the export."""
     export_name: str
@@ -50,6 +51,7 @@ class DeprecatedImport(TypedDict, total=False):
     This class defines the structure for deprecated imports, including the import path,
     reason for deprecation, and a replacement attribute.
     """
+
     path: str | Callable[[], Any]
     """The import path of the deprecated object, or a callable that returns the object."""
     reason: str

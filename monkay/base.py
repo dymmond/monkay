@@ -116,6 +116,7 @@ def absolutify_import(import_path: str, package: str | None) -> str:
 
     return f"{package}.{import_path.lstrip('.')}"
 
+
 class InGlobalsDict(Exception): ...
 
 

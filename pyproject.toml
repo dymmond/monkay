@@ -41,7 +41,17 @@ Source = "https://github.com/devkral/monkay"
 path = "monkay/__about__.py"
 
 [tool.hatch.envs.default]
-dependencies = ["pydantic_settings", "pre-commit"]
+dependencies = [
+  "mypy==1.15.0",
+  "ruff>=0.3.0,<5.0.0",
+  "pre-commit>=3.3.1,<4.0.0",
+  "devtools>=0.12.2",
+  "ipython",
+  "ptpython",
+  "twine",
+  "pydantic_settings",
+  "pre-commit",
+]
 
 [tool.hatch.envs.docs]
 dependencies = [
@@ -53,6 +63,12 @@ dependencies = [
 build = "mkdocs build"
 serve = "mkdocs serve --dev-addr localhost:8000"
 
+[tool.hatch.envs.default.scripts]
+clean_pyc = "find . -type f -name \"*.pyc\" -delete"
+clean_pyi = "find . -type f -name \"*.pyi\" -delete"
+clean_pycache = "find . -type d -name \"*__pycache__*\" -delete"
+build_with_check = "hatch build; twine check dist/*"
+lint = "ruff check --fix --line-length 99  monkay tests {args}"
 
 [tool.hatch.envs.types]
 extra-dependencies = ["mypy>=1.0.0"]

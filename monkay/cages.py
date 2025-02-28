@@ -190,6 +190,7 @@ class Cage(Generic[T]):
         Returns:
             A wrapper function that forwards method calls.
         """
+
         @wraps(getattr(obj_type, name))
         def _(self, *args: Any, **kwargs: Any):
             obj = self.monkay_conditional_update_copy()
