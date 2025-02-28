@@ -3,7 +3,6 @@ from __future__ import annotations
 import warnings
 from collections.abc import Callable, Iterable
 from contextvars import ContextVar
-from importlib import import_module
 from typing import (
     Any,
     Generic,
@@ -29,6 +28,13 @@ class Monkay(
     MonkayExports,
     Generic[INSTANCE, SETTINGS],
 ):
+    """
+    A comprehensive class that combines instance, settings, and export management for a module.
+
+    This class provides a unified interface for managing module instances, settings, and exports.
+    It integrates lazy imports, deprecated imports, settings loading, and instance management.
+    """
+
     def __init__(
         self,
         globals_dict: dict,
@@ -60,6 +66,38 @@ class Monkay(
         ignore_preload_import_errors: bool = True,
         package: str | None = "",
     ) -> None:
+        """
+        Initializes a Monkay instance.
+
+        This method sets up the Monkay instance with the provided configurations, including
+        instance management, settings loading, lazy imports, and extension handling.
+
+        Args:
+            globals_dict: The module's globals dictionary.
+            with_instance: If True, enables instance management with a default context variable name.
+                           If a string, uses the provided name for the context variable.
+            with_extensions: If True, enables extension management with a default context variable name.
+                             If a string, uses the provided name for the context variable.
+            extension_order_key_fn: An optional function to define the order in which extensions are applied.
+            settings_path: The path to the settings object, a callable, a settings instance, or a settings class.
+                           If False or None, settings are disabled.
+            preloads: An iterable of preload paths to execute before initialization.
+            settings_preloads_name: The name used to identify preload settings.
+            settings_extensions_name: The name used to identify extension settings.
+            uncached_imports: An iterable of import names that should not be cached.
+            lazy_imports: A dictionary of lazy imports.
+            deprecated_lazy_imports: A dictionary of deprecated lazy imports.
+            settings_ctx_name: The name of the settings context variable.
+            extensions_applied_ctx_name: The name of the extensions applied context variable.
+            skip_all_update: If True, skips updating the `__all__` variable.
+            skip_getattr_fixup: If True, skips fixing the missing `__dir__` function.
+            evaluate_settings: Deprecated parameter.
+            ignore_settings_import_errors: If True, ignores settings import errors.
+            pre_add_lazy_import_hook: A hook to modify lazy import definitions before they are added.
+            post_add_lazy_import_hook: A hook to execute after a lazy import is added.
+            ignore_preload_import_errors: If True, ignores preload import errors.
+            package: The package name to use for relative imports.
+        """
         self.globals_dict = globals_dict
         if with_instance is True:
             with_instance = "monkay_instance_ctx"
@@ -123,6 +161,16 @@ class Monkay(
             )
 
     def clear_caches(self, settings_cache: bool = True, import_cache: bool = True) -> None:
+        """
+        Clears the settings and import caches.
+
+        This method clears the cached settings and/or import objects, forcing them to be reloaded
+        on next access.
+
+        Args:
+            settings_cache: If True, clears the settings cache.
+            import_cache: If True, clears the import cache.
+        """
         if settings_cache:
             del self.settings
         if import_cache:
@@ -135,22 +183,23 @@ class Monkay(
         ignore_import_errors: bool = True,
         package: str | None = None,
     ) -> bool:
+        """
+        Evaluates preload modules or functions specified in settings.
+
+        This method delegates to the `evaluate_preloads` function, using the Monkay instance's
+        package if no package is provided.
+
+        Args:
+            preloads: An iterable of preload paths, in the format "module" or "module:function".
+            ignore_import_errors: If True, ignores import errors and continues processing.
+            package: The package name to use as a context for relative imports.
+
+        Returns:
+            True if all preloads were successfully evaluated, False otherwise.
+        """
         return evaluate_preloads(
             preloads, ignore_import_errors=ignore_import_errors, package=package or self.package
         )
-        no_errors: bool = True
-        for preload in preloads:
-            splitted = preload.rsplit(":", 1)
-            try:
-                module = import_module(splitted[0], self.package)
-            except (ImportError, AttributeError) as exc:
-                if not ignore_import_errors:
-                    raise exc
-                no_errors = False
-                continue
-            if len(splitted) == 2:
-                getattr(module, splitted[1])()
-        return no_errors
 
     def _evaluate_settings(
         self,
@@ -160,6 +209,20 @@ class Monkay(
         ignore_preload_import_errors: bool,
         initial_settings_evaluated: bool,
     ) -> None:
+        """
+        Internal method to evaluate settings preloads and extensions.
+
+        This method evaluates the preloads and extensions specified in the settings object.
+
+        Args:
+            settings: The settings object to evaluate.
+            on_conflict: Specifies how to handle conflicts when adding extensions.
+            ignore_preload_import_errors: If True, ignores preload import errors.
+            initial_settings_evaluated: The initial state of the settings evaluation flag.
+
+        Raises:
+            Exception: If an error occurs during evaluation and initial settings evaluation was False.
+        """
         self.settings_evaluated = True
 
         try:
@@ -184,6 +247,20 @@ class Monkay(
         ignore_preload_import_errors: bool = True,
         onetime: bool = True,
     ) -> bool:
+        """
+        Evaluates settings preloads and extensions.
+
+        This method evaluates the preloads and extensions specified in the settings object.
+
+        Args:
+            on_conflict: Specifies how to handle conflicts when adding extensions.
+            ignore_import_errors: If True, ignores settings import errors.
+            ignore_preload_import_errors: If True, ignores preload import errors.
+            onetime: If True, evaluates settings only once.
+
+        Returns:
+            True if settings were successfully evaluated, False otherwise.
+        """
         initial_settings_evaluated = self.settings_evaluated
         if onetime and initial_settings_evaluated:
             return True
@@ -213,6 +290,18 @@ class Monkay(
         on_conflict: Literal["error", "keep", "replace"] = "error",
         ignore_import_errors: bool = True,
     ) -> bool:
+        """
+        Evaluates settings preloads and extensions once. (Deprecated)
+
+        This method is deprecated and now equivalent to `evaluate_settings(onetime=True)`.
+
+        Args:
+            on_conflict: Specifies how to handle conflicts when adding extensions.
+            ignore_import_errors: If True, ignores settings import errors.
+
+        Returns:
+            True if settings were successfully evaluated, False otherwise.
+        """
         warnings.warn(
             "`evaluate_settings_once` is deprecated. Use `evaluate_settings` instead. It has now the same functionality.",
             stacklevel=2,
