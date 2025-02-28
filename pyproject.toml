@@ -11,7 +11,7 @@ requires-python = ">=3.9"
 keywords = ["monkey-patching", "settings", "lazy-imports"]
 authors = [
   { name = "alex", email = "devkral@web.de" },
-  { name = "Tiago Silva", email = "tiago.arasilva@gmail.com" }
+  { name = "Tiago Silva", email = "tiago.arasilva@gmail.com" },
 ]
 classifiers = [
   "Operating System :: OS Independent",
@@ -28,7 +28,7 @@ classifiers = [
   "Programming Language :: Python :: 3.13",
   "Programming Language :: Python :: Implementation :: CPython",
   "Programming Language :: Python :: Implementation :: PyPy",
-  "License :: OSI Approved :: BSD License"
+  "License :: OSI Approved :: BSD License",
 ]
 dependencies = []
 
@@ -41,16 +41,13 @@ Source = "https://github.com/devkral/monkay"
 path = "monkay/__about__.py"
 
 [tool.hatch.envs.default]
-dependencies = [
-  "pydantic_settings",
-  "pre-commit"
-]
+dependencies = ["pydantic_settings", "pre-commit"]
 
 [tool.hatch.envs.docs]
 dependencies = [
   "mkdocs",
   "mkdocs-material>=9.4.4,<10.0.0",
-  "mdx-include>=1.4.2,<2.0.0"
+  "mdx-include>=1.4.2,<2.0.0",
 ]
 [tool.hatch.envs.docs.scripts]
 build = "mkdocs build"
@@ -58,37 +55,27 @@ serve = "mkdocs serve --dev-addr localhost:8000"
 
 
 [tool.hatch.envs.types]
-extra-dependencies = [
-  "mypy>=1.0.0",
-]
+extra-dependencies = ["mypy>=1.0.0"]
 [tool.hatch.envs.types.scripts]
 check = "mypy monkay {args}"
 
 
 [tool.hatch.envs.hatch-test]
-extra-dependencies = [
-  "pydantic_settings"
-]
+extra-dependencies = ["pydantic_settings"]
 
 
 [tool.coverage.run]
 source_pkgs = ["monkay", "tests"]
 branch = true
 parallel = true
-omit = [
-  "monkay/__about__.py",
-]
+omit = ["monkay/__about__.py"]
 
 [tool.coverage.paths]
 monkay = ["monkay", "*/monkay/monkay"]
 tests = ["tests", "*/monkay/tests"]
 
 [tool.coverage.report]
-exclude_lines = [
-  "no cov",
-  "if __name__ == .__main__.:",
-  "if TYPE_CHECKING:",
-]
+exclude_lines = ["no cov", "if __name__ == .__main__.:", "if TYPE_CHECKING:"]
 
 [tool.ruff]
 line-length = 99
@@ -96,7 +83,7 @@ fix = true
 
 [tool.ruff.lint]
 select = ["E", "W", "F", "C", "B", "I", "UP", "SIM"]
-ignore = ["E501", "B008", "C901", "B026", "SIM115"]
+ignore = ["E501", "B008", "C901", "B026", "SIM115", "W505"]
 
 
 [tool.ruff.lint.pycodestyle]

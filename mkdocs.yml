@@ -1,6 +1,6 @@
 site_name: Monkay
 site_description: The ultimate preload, settings and lazy import manager
-site_url: https://dymmond.github.io/monkay
+site_url: https://monkay.dymmond.com
 
 theme:
   name: "material"
@@ -32,6 +32,10 @@ theme:
     - navigation.indexes
     - navigation.path
     - navigation.tabs
+
+repo_name: dymmond/monkay
+repo_url: https://github.com/dymmond/monkay
+edit_uri: ""
 
 nav:
   - Home: index.md
