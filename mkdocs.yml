@@ -1,5 +1,5 @@
 site_name: Monkay
-site_description: The ultimate preload, settings, lazy import manager..
+site_description: The ultimate preload, settings and lazy import manager
 site_url: https://dymmond.github.io/monkay
 
 theme:
@@ -33,7 +33,6 @@ theme:
     - navigation.path
     - navigation.tabs
 
-
 nav:
   - Home: index.md
   - Tutorial: tutorial.md
@@ -42,6 +41,8 @@ nav:
   - Specials: specials.md
   - Settings: settings.md
   - Cages: cages.md
+  - Contributing: contributing.md
+  - Sponsorship: sponsorship.md
   - Release Notes: release-notes.md
 
 markdown_extensions:
