@@ -1,19 +1,18 @@
 # Settings
 
-## Setting settings forward
+## Forwarding Settings
 
-Sometimes you have some packages which should work independently but
-in case of a main package the packages should use the settings of the main package.
+In some cases, you may have separate packages that need to operate independently but still need to use the
+settings of a main package. **Monkay** allows for a forwarding mode where settings are forwarded from a child
+package to the main package.
 
-For this monkay settings have a forwarding mode, in which the cache is disabled.
-It can be enabled by either setting the settings parameter to a function (most probably less common)
-or simply assigning a callable to the monkay settings property.
-It is expected that the assigned function returns a suitable settings object.
+In this mode, the cache is disabled, and settings are assigned either by setting a function or by simply
+assigning a callable to the `settings` property of the `Monkay` instance. The callable should return a suitable
+settings object.
 
+### Example: Child Package
 
-Child
-
-``` python
+```python
 import os
 from monkay import Monkay
 
@@ -23,9 +22,9 @@ monkay = Monkay(
 )
 ```
 
-Main
+### Example: Main Package
 
-``` python
+```python
 import os
 import child
 
@@ -36,45 +35,60 @@ monkay = Monkay(
 child.monkay.settings = lambda: monkay.settings
 ```
 
-## Lazy settings setup
+With this setup, the child package will use the settings from the main package, ensuring that all configurations
+are aligned.
 
-Settings are only evaluated when calling `evaluate_settings`. This means you can do a lazy setup like this:
+---
 
-``` python
+## Lazy Settings Setup
+
+With **Monkay**, settings are only evaluated when needed. This allows for lazy setup, meaning you can defer the
+evaluation of settings until later in the application lifecycle.
+
+### Example:
+
+```python
 import os
 from monkay import Monkay
 
 monkay = Monkay(
     globals(),
-    # required for initializing settings feature
+    # Required for initializing settings feature
     settings_path=""
 )
 
-# somewhere later
-
+# Lazy setup based on environment variables
 if not os.environ.get("DEBUG"):
     monkay.settings = os.environ.get("MONKAY_MAIN_SETTINGS", "foo.test:example") or ""
 elif os.environ.get("PERFORMANCE"):
-    # you can also provide a class
     monkay.settings = DebugSettings
 else:
     monkay.settings = DebugSettings()
 
-# now the settings are applied
+# Now the settings are applied
 monkay.evaluate_settings()
 ```
 
-## Multi stage settings setup
+This approach allows for flexible configuration of the application, based on the environment, while deferring the
+actual evaluation of settings.
 
-By passing `ignore_import_errors=True` we can check multiple pathes if the config could load. We get a False as return value in case of not.
+---
 
-``` python
+## Multi-Stage Settings Setup
+
+For situations where you need to load settings from multiple sources or paths, **Monkay** supports multi-stage
+settings evaluation. By passing `ignore_import_errors=True`, you can attempt to load settings from multiple paths
+and handle errors more gracefully.
+
+### Example:
+
+```python
 import os
 from monkay import Monkay
 
 monkay = Monkay(
     globals(),
-    # required for initializing settings feature
+    # Required for initializing settings feature
     settings_path=""
 )
 
@@ -84,67 +98,137 @@ def find_settings():
             break
 ```
 
-### `evaluate_settings` method
+In this example, **Monkay** tries to evaluate settings from both `a.settings` and `b.settings.develop`, ignoring
+import errors if they occur.
 
-There is also`evaluate_settings` which evaluates always, not checking for if the settings were
-evaluated already and not optionally ignoring import errors.
-The return_value is `True` for a successful evaluation and `False` in the other case.
-It has has following keyword only parameter:
+---
 
-- `on_conflict`: Matches the values of add_extension but defaults to `error`.
-- `onetime`: Evaluates the settings only one the first call. All other calls become noops. Defaults to `True`.
-- `ignore_import_errors`: Suppress import related errors concerning settings. Handles unset settings lenient. Defaults to `False`.
-- `ignore_preload_import_errors`: Suppress import related errors concerning preloads in settings. Defaults to `True`.
+## `evaluate_settings` Method
 
-!!! Note
-    `evaluate_settings` doesn't touch the settings when no `settings_preloads_name` and/or `settings_extensions_name` is set
-    but will still set the `settings_evaluated` flag to `True`.
+The `evaluate_settings` method is used to explicitly evaluate the settings, regardless of whether they have been
+evaluated already. It also allows you to control how conflicts and import errors are handled.
 
-!!! Note
-    `ignore_import_errors` suppresses also UnsetError which is raised when the settings are unset.
+### Parameters:
+- `on_conflict`: Controls the behavior when settings conflict. Defaults to `error`.
+- `onetime`: If `True` (default), the settings are evaluated only on the first call. Subsequent calls are no-ops.
+- `ignore_import_errors`: If `True`, suppresses import-related errors when loading settings. Defaults to `False`.
+- `ignore_preload_import_errors`: If `True`, suppresses errors related to preloads in settings. Defaults to `True`.
 
-### `settings_evaluated` flag
+### Example:
 
-Internally it is a property which sets the right flag. Either on the ContextVar or on the instance.
-It is resetted when assigning settings and initial `False` for `with_settings`.
+```python
+monkay.evaluate_settings(on_conflict="warn", ignore_import_errors=True)
+```
 
-## Other settings types
+This method will return `True` if the settings were successfully evaluated, or `False` if there was an error.
 
-All of the assignment examples are also possible as settings_path parameter.
-When assigning a string or a class, the initialization happens on the first access to the settings
-attribute and are cached.
-Functions get evaluated on every access and should care for caching in case it is required (for forwards the caching
-takes place in the main settings).
+> **Note**: `evaluate_settings` does not touch the settings if no `settings_preloads_name` or `settings_extensions_name` is set, but it will still set the `settings_evaluated` flag to `True`.
+
+> **Note**: The `ignore_import_errors` flag also suppresses the `UnsetError` that occurs when settings are unset.
+
+---
+
+## `settings_evaluated` Flag
+
+The `settings_evaluated` flag is an internal property that tracks whether the settings have been evaluated.
+This flag can be set on the `ContextVar` or on the instance, depending on the context.
+
+It is reset when new settings are assigned and is initially set to `False` for instances without settings.
+
+---
+
+## Other Settings Types
+
+**Monkay** supports various ways of assigning settings:
+
+- **String or Class**: Initialization happens the first time the settings are accessed and are cached afterward.
+- **Function**: The function gets evaluated each time the settings are accessed. If caching is required,
+- it is up to the function to handle it (e.g., forwarding settings can rely on caching in the main settings).
+
+You can also use the `settings_path` parameter to assign a settings location directly, using either a string or
+class reference.
+
+### Caching Behavior:
+- **String or Class**: These types are cached after the first evaluation.
+- **Function**: Functions are re-evaluated on every access. If needed, the caching mechanism can be handled within
+the function (e.g., caching results in the main settings).
+
+---
 
 ## Forwarder
 
-Sometimes you have an old settings place and want to forward it to the monkay one.
-Here does no helper exist but a forwarder is easy to write:
+Sometimes, you may need to forward old settings to the **Monkay** settings. While there isn’t a built-in helper,
+creating a forwarder is easy. Here's an example:
 
-``` python
+```python
 from typing import Any, cast, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from .global_settings import EdgySettings
 
-
 class SettingsForward:
     def __getattribute__(self, name: str) -> Any:
         import edgy
-
         return getattr(edgy.monkay.settings, name)
 
-# we want to pretend the forward is the real object
+# Pretend the forward is the real object
 settings = cast("EdgySettings", SettingsForward())
 
 __all__ = ["settings"]
 ```
 
-!!! Note
-    For enabling settings modifications, you may need to define `__setattr__`, `__delattr__` too.
-    It is however not recommended.
+### Note:
+If you want to enable setting modifications, you may also need to define `__setattr__` and `__delattr__`.
+However, this is not recommended unless absolutely necessary.
 
-## Deleting settings
+---
 
-You can delete settings by assigning one of "", None, False. Afterwards
-accessing settings will raise an error until set again.
+## Deleting Settings
+
+You can delete settings by assigning one of the following values: `""`, `None`, or `False`. Afterward, any access
+to settings will raise an error until new settings are assigned.
+
+Example:
+
+```python
+monkay.settings = None  # This will delete the current settings
+```
+
+Trying to access `monkay.settings` afterward will raise an error until settings are set again.
+
+---
+
+## Settings Preloads and Extensions
+
+**Monkay** allows you to handle settings preloads and extensions. Preloads are used to initialize settings before
+other components of the application, and extensions can be used to add extra functionality.
+
+### Example: Preloading Settings
+
+```python
+monkay.settings_preloads_name = "preload_settings"
+monkay.evaluate_settings()
+```
+
+This ensures that `preload_settings` are loaded before the application starts, providing a mechanism to set up
+necessary configurations upfront.
+
+### Example: Adding Extensions
+
+```python
+monkay.settings_extensions_name = "additional_settings_extension"
+monkay.evaluate_settings()
+```
+
+Extensions allow you to modify or extend the configuration system, adding custom behavior as needed.
+
+---
+
+## Handling Settings Conflicts
+
+If multiple sources of settings are evaluated, conflicts may arise. By setting the `on_conflict` parameter, you can control how conflicts are handled.
+
+### Conflict Options:
+- `error`: Raise an error when a conflict occurs (default).
+- `warn`: Log a warning but continue processing.
+- `merge`: Merge the conflicting settings.

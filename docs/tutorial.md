@@ -1,22 +1,30 @@
 # Tutorial
 
-## How to use
+**Monkay** simplifies dynamic imports, extension management, settings handling, and much more. This tutorial walks you through the essential steps for using **Monkay** in your projects.
+
+---
+
+## How to Use **Monkay**
 
 ### Installation
 
-``` shell
+To get started with **Monkay**, install it via `pip`:
+
+```shell
 pip install monkay
 ```
 
+---
+
 ### Usage
 
-Probably you define something like this:
+Below is an example of how to set up **Monkay** in your project. You can use **Monkay** to manage dynamic imports, lazy loading, settings, extensions, and more.
 
-``` python title="foo/__init__.py"
+```python title="foo/__init__.py"
 from monkay import Monkay
 
 monkay = Monkay(
-    # required for autohooking
+    # Required for auto-hooking
     globals(),
     with_extensions=True,
     with_instance=True,
@@ -40,83 +48,84 @@ monkay = Monkay(
 )
 ```
 
-``` python title="foo/main.py"
+This configuration sets up **Monkay** with several features:
+- **Lazy imports** for `bar` and `settings`.
+- **Deprecated lazy imports** for `deprecated`.
+- **Preloads** and **extensions** for dynamic configuration.
+- **Uncached imports** to prevent caching specific imports like settings.
+
+```python title="foo/main.py"
 from foo import monkay
+
 def get_application():
     # sys.path updates
-    important_preloads =[...]
+    important_preloads = [...]
     monkay.evaluate_preloads(important_preloads, ignore_import_errors=False)
-    extra_preloads =[...]
+    extra_preloads = [...]
     monkay.evaluate_preloads(extra_preloads)
     monkay.evaluate_settings()
 ```
 
-When providing your own `__all__` variable **after** providing Monkay or you want more control, you can provide
+In `main.py`, the application is initialized by evaluating preloads and settings, ensuring that all required dependencies are loaded before use.
 
-`skip_all_update=True`
+---
 
-and update the `__all__` value via `Monkay.update_all_var` if wanted.
+### **Managing `__all__` for Control**
 
-!!! Warning
-    There is a catch when using `settings_preloads_name` and/or `settings_preloads_name`.
-    It is easy to run in circular dependency errors.
-    But this means, you have to apply them later via `evaluate_settings` later.
-    For more informations see [Settings preloads and/or extensions](#settings-extensions-andor-preloads)
+After providing **Monkay**, if you need more control over the `__all__` variable, you can disable the automatic update of `__all__` by setting `skip_all_update=True`. You can later update it manually using `Monkay.update_all_var`.
 
+**Warning**: Using `settings_preloads_name` or `settings_extensions_name` can sometimes cause circular dependency issues. To avoid such issues, ensure that you call `evaluate_settings()` later in the setup process. For more information, refer to [Settings Preloads and Extensions](#settings-preloads-andextensions).
 
-#### Lazy imports
+---
 
-When using lazy imports the globals get an `__getattr__` and `__dir__` injected. A potential old `__getattr__` and/or `__dir__` is used when specified **before**
-initializing the Monkay instance.
+## Lazy Imports
 
-The lookup hierarchy is:
+**Monkay** enhances the import process by allowing lazy imports. When using lazy imports, **Monkay** injects `__getattr__` and `__dir__` into the globals.
 
-`module attr > monkay __getattr__ > former __getattr__ or Error`.
+The lookup hierarchy for lazy imports is as follows:
+1. **Module attribute**
+2. **Monkay `__getattr__`**
+3. **Previous `__getattr__` or error**
 
-Lazy imports of the `lazy_imports` parameter/attribute are defined in a dict with the key as the pseudo attribute and the value the forward string or a function
-which return result is used.
+Lazy imports are defined in the `lazy_imports` dictionary, where the key is the pseudo attribute name and the value is the module path or a function returning the result.
 
-There are also `deprecated_lazy_imports` which have as value a dictionary with the key-values
+#### Deprecated Lazy Imports
 
-- `path`: Path to object or function returning object.
-- `reason` (Optional): Deprecation reason.
-- `new_attribute` (Optional): Upgrade path. New attribute.
+In addition to lazy imports, **Monkay** also supports deprecated lazy imports. These are defined as a dictionary with the following keys:
+- **`path`**: The path to the object.
+- **`reason`** (Optional): Reason for deprecation.
+- **`new_attribute`** (Optional): The new attribute to use.
 
-##### Listing all attributes with `dir()`
+#### Listing All Attributes with `dir()`
 
-Monkay also injects a `__dir__` module function for listing via dir. It contains all lazy imports as well as `__all__` variable contents.
-The `__dir__` function is also injected without lazy imports when an existing `__getattr__` without a `__dir__` function was detected and
-an `__all__` variable is available.
-It is tried to guess the attributes provided by using the `__all__` variable.
+**Monkay** injects a `__dir__()` function that provides a list of all attributes, including lazy imports and the contents of `__all__`. This is useful when working with autocompletion and introspection.
 
-In short the sources for the Monkay `__dir__` are:
+- **Sources for `__dir__`**:
+  - The old `__dir__()` function (if provided before **Monkay** initialization).
+  - `__all__` variable.
+  - Lazy imports.
 
-- Old `__dir__()` function if provided before the Monkay initialization.
-- `__all__` variable.
-- Lazy imports.
+---
 
-##### Caching
+## Caching
 
-By default all lazy import results are cached. This is sometimes not desirable
-Sometimes it is desirable to not cache. E.g. for dynamic results like settings.
-The caching can be disabled via the `uncached_imports` parameter which generates from an iterable
-a set of imports which aren't cached.
+By default, **Monkay** caches all lazy imports. However, caching may not always be desirable, especially for dynamic results like settings. You can disable caching for specific imports using the `uncached_imports` parameter, which takes an iterable of imports that shouldn't be cached.
 
-There is also a method:
+You can also clear the caches using the `clear_caches()` method:
 
-`clear_caches(settings_cache=True, import_cache=True)`
+```python
+monkay.clear_caches(settings_cache=True, import_cache=True)
+```
 
-Which can be used to clear the caches.
+This will clear the caches for both settings and imports, ensuring that fresh data is loaded.
 
+---
 
-#### Using settings
+### Using Settings
 
-Settings pointed at via the string can be an initialized settings variable or a class.
-When pointing to a class the class is automatically called without arguments.
+You can configure **Monkay** to use settings from various sources, including environment variables, classes, or explicitly defined settings objects. Here's an example of configuring **Monkay** using environment variables (similar to Django's settings pattern):
 
-Let's do the configuration like Django via environment variable:
-
-``` python title="__init__.py"
+```python title="__init__.py"
 import os
 monkay = Monkay(
     globals(),
@@ -130,7 +139,9 @@ monkay = Monkay(
 )
 ```
 
-``` python title="settings.py"
+Here, the `settings_path` is determined by an environment variable, and **Monkay** will use `settings` as the main settings object.
+
+```python title="settings.py"
 from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
@@ -138,55 +149,15 @@ class Settings(BaseSettings):
     extensions: list[Any] = []
 ```
 
-``` python title="main.py"
+In this setup, **Monkay** will dynamically load the `Settings` class from the specified path, and settings will be available via `monkay.settings`.
 
-def get_application():
-    # initialize the loaders/sys.path
-    # add additional preloads
-    monkay.evaluate_preloads(...)
-    monkay.evaluate_settings()
+---
 
-app = get_application()
-```
+### Other Settings Libraries
 
-And voila settings are now available from monkay.settings as well as settings. This works only when all settings arguments are
-set via environment or defaults.
-Note the `uncached_imports`. Because temporary overwrites should be possible, we should not cache this import. The settings
-are cached anyway.
+While **Monkay** uses `pydantic_settings` in this example, the settings can come from any source that is resolvable as attributes or keys, such as dictionaries or `TypedDict`.
 
-When having explicit variables this is also possible:
-
-``` python title="explicit_settings.py"
-from pydantic_settings import BaseSettings
-
-class Settings(BaseSettings):
-    preloads: list[str]
-    extensions: list[Any]
-
-settings = Settings(preloads=[], extensions=[])
-```
-Note here the lowercase settings
-
-``` python title="__init__.py"
-import os
-from monkay import Monkay
-monkay = Monkay(
-    globals(),
-    with_extensions=True,
-    with_instance=True,
-    settings_path=os.environ.get("MONKAY_SETTINGS", "example.default.path.settings:settings"),
-    settings_preloads_name="preloads",
-    settings_extensions_name="extensions",
-)
-```
-
-##### Other settings libraries
-
-Here we just use pydantic_settings. But settings can be everything from a dictionary, to a dataclass.
-Only requirement is that names are resolvable as attributes or as keys.`
-
-
-``` python title="explicit_settings.py"
+```python title="explicit_settings.py"
 from typing import TypedDict
 
 class Settings(TypedDict):
@@ -195,38 +166,17 @@ class Settings(TypedDict):
     foo: str
 
 settings = Settings(preloads=[], extensions=[], foo="hello")
-# or just a dictionary
-# settings = {"preloads": [], "extensions": [], "foo": "hello"}
 ```
 
-and
+You can use this structure within **Monkay** by pointing `settings_path` to the settings class or object.
 
-``` python title="__init__.py"
-import os
-from monkay import Monkay, get_value_from_settings
-monkay = Monkay(
-    globals(),
-    with_extensions=True,
-    with_instance=True,
-    settings_path=os.environ.get("MONKAY_SETTINGS", "example.default.path.settings:settings"),
-    settings_preloads_name="preloads",
-    settings_extensions_name="extensions",
-)
+---
 
-# attribute grabber with fallback to items
-get_value_from_settings(monkay.settings, "foo")
-```
-#### Settings extensions and/or preloads
+## Settings Extensions and Preloads
 
-When using `settings_preloads_name` and/or `settings_extensions_name` we need to call in the setup of the application
-`evaluate_settings()`. Otherwise we may would end up with circular depdendencies, missing imports and wrong library versions.
+When using `settings_preloads_name` or `settings_extensions_name`, it’s important to call `evaluate_settings()` later in the setup process to avoid circular dependencies and ensure that preloads and extensions are applied correctly. Failing to do so could result in missing imports or incorrect library versions.
 
-This means however the preloads are not loaded as well the extensions initialized.
-For initializing it later, we need `evaluate_settings`.
-
-Wherever the settings are expected we can add it.
-
-Example:
+Here’s an example of using **Monkay** with preloads and extensions:
 
 ```python title="edgy/settings/conf.py"
 from functools import lru_cache
@@ -243,43 +193,16 @@ class SettingsForward:
 
 settings = SettingsForward()
 ```
-or
 
-```python title="foo/main.py"
-def get_application():
-    import foo
-    foo.monkay.evaluate_settings(ignore_import_errors=False)
-    app = App()
+This example demonstrates how to load settings dynamically and handle dependencies via preloads and extensions.
 
-    foo.monkay.set_instance(app)
-    return app
+---
 
-app = get_application()
-```
+### Preloads
 
-You may want to not silence the import error like in monkay `<0.2.0`, then pass
+Preloads can be either module imports or function calls. When specifying preloads, you can use module paths or function names to ensure that the necessary components are loaded before the application starts.
 
-`ignore_settings_import_errors=False` to the init.
-
-More information can be found in [Settings `evaluate_settings`](./settings.md#evaluate_settings-method)
-
-#### Pathes
-
-Like shown in the examples pathes end with a `:` for an attribute. But sometimes a dot is nicer.
-This is why you can also use a dot in most cases. A notable exception are preloads where `:` are marking loading functions.
-
-#### Preloads
-
-Preloads are required in case some parts of the application are self-registering but no extensions.
-
-There are two kinds of preloads
-
-1. Module preloads. Simply a module is imported via `import_module`. Self-registrations are executed
-2. Functional preloads. With a `:`. The function name behind the `:` is executed and it is
-   expected that the function does the preloading. The module however is still preloaded.
-
-
-``` python title="preloader.py"
+```python title="preloader.py"
 from importlib import import_module
 
 def preloader():
@@ -287,26 +210,22 @@ def preloader():
         import_module(i)
 ```
 
-``` python title="settings.py"
+```python title="settings.py"
 from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
     preloads: list[str] = ["preloader:preloader"]
 ```
 
-!!! Warning
-    Settings preloads are only executed after executing `evaluate_settings()`. Preloads given in the `__init__` are evaluated instantly.
-    You can however call `evaluate_preloads` directly.
+**Warning**: Settings preloads are only executed after calling `evaluate_settings()`. Preloads provided in the `__init__` are evaluated immediately. To evaluate preloads later, you can call `evaluate_preloads()` directly.
 
+---
 
-#### Using the instance feature
+### Using the Instance Feature
 
-The instance feature is activated by providing a boolean (or a string for an explicit name) to the `with_instance`
-parameter.
+The instance feature is activated by providing `with_instance=True` when initializing **Monkay**. Once activated, you can set the instance via `set_instance`, allowing for dynamic configuration of your application.
 
-For entrypoints you can set now the instance via `set_instance`. A good entrypoint is the init and using the settings:
-
-``` python title="__init__.py"
+```python title="__init__.py"
 import os
 from monkay import Monkay, load
 
@@ -323,13 +242,13 @@ monkay.evaluate_settings()
 monkay.set_instance(load(settings.APP_PATH))
 ```
 
-#### Using the extensions feature
+---
 
-Extensions work well together with the instances features.
+## Using the Extensions Feature
 
-An extension is a class implementing the ExtensionProtocol:
+Extensions are a powerful feature of **Monkay** that allow you to extend the functionality of your application dynamically. Extensions must implement the `ExtensionProtocol`:
 
-``` python title="Extension protocol"
+```python title="Extension Protocol"
 from typing import Protocol
 
 @runtime_checkable
@@ -339,10 +258,9 @@ class ExtensionProtocol(Protocol[INSTANCE, SETTINGS]):
     def apply(self, monkay_instance: Monkay[INSTANCE, SETTINGS]) -> None: ...
 ```
 
-A name (can be dynamic) and the apply method are required. The instance itself is easily retrieved from
-the monkay instance.
+Extensions can be applied to **Monkay** dynamically and can modify the instance or settings as needed.
 
-``` python title="settings.py"
+```python title="settings.py"
 from dataclasses import dataclass
 import copy
 from pydantic_settings import BaseSettings
@@ -363,31 +281,15 @@ class Settings(BaseSettings):
     APP_PATH: str = "settings.App"
 ```
 
-##### Reordering extension order dynamically
-
-During apply it is possible to call `monkay.ensure_extension(name | Extension)`. When providing an extension
-it is automatically initialized though not added to extensions.
-Every name is called once and extensions in `monkay.extensions` have priority. They will applied instead when providing
-a same named extension via ensure_extension.
-
-##### Reordering extension order dynamically2
-
-There is a second more complicated way to reorder:
-
-via the parameter `extension_order_key_fn`. It takes a key function which is expected to return a lexicographic key capable for ordering.
-
-You can however intermix both.
+---
 
 ## Tricks
 
-### Type-checker friendly lazy imports
+### Type-Checker Friendly Lazy Imports
 
-Additionally to the lazy imports you can define in the `TYPE_CHECKING` scope the imports of the types.
+You can define imports for type-checking within the `TYPE_CHECKING` scope. These imports are only used during type-checking and are not executed during runtime.
 
-They are not loaded except when type checking.
-
-``` python
-
+```python
 from typing import TYPE_CHECKING
 
 from monkay import Monkay
@@ -396,7 +298,7 @@ if TYPE_CHECKING:
     from tests.targets.fn_module import bar
 
 monkay = Monkay(
-    # required for autohooking
+    # Required for autohooking
     globals(),
     lazy_imports={
         "bar": "tests.targets.fn_module:bar",
@@ -406,13 +308,9 @@ monkay = Monkay(
 
 ### Static `__all__`
 
-For autocompletions it is helpful to have a static `__all__` variable because many tools parse the sourcecode.
-Handling the `__all__` manually is for small imports easy but for bigger projects problematic.
+For autocompletion, it’s useful to define a static `__all__` variable. This ensures that IDEs and tools can parse the source code properly and provide accurate autocompletion.
 
-Let's extend the former example:
-
-``` python
-
+```python
 import os
 from typing import TYPE_CHECKING
 
@@ -421,39 +319,17 @@ from monkay import Monkay
 if TYPE_CHECKING:
     from tests.targets.fn_module import bar
 
-__all__ =["bar", "monkay", "stringify_all", "check"]
+__all__ = ["bar", "monkay", "stringify_all", "check"]
 
 monkay = Monkay(
-    # required for autohooking
+    # Required for autohooking
     globals(),
     lazy_imports={
         "bar": "tests.targets.fn_module:bar",
     },
-    skip_all_update=not os.environ.get("DEBUG")
-    # when printing all, lazy imports automatically add to __all__
-    post_add_lazy_import_hook=__all__.append if  __name__ == "__main__" else None
+    skip_all_update=not os.environ.get("DEBUG"),
+    post_add_lazy_import_hook=__all__.append if __name__ == "__main__" else None
 )
-
-
-def print_stringify_all(separate_by_category: bool=True) -> None:
-    print("__all__ = [\n{}\n]".format(
-        "\n,".join(
-            f'"{t[1]}"'
-            for t in monkay.sorted_exports(separate_by_category=separate_by_category)
-        )
-    ))
-
-def check() -> None:
-    if monkay.find_missing(search_pathes=["tests.targets.fn_module"]):
-        raise Exception()
-
-if __name__ == "__main__":
-    # refresh __all__ to contain all lazy imports
-    __all__ = monkay.update_all_var(__all__)
-    print_stringify_all()
-elif os.environ.get("DEBUG"):
-    check()
 ```
 
-This way in a debug environment the imports are automatically checked.
-And via `python -m mod` the new `__all__` can be exported.
+This example updates `__all__` dynamically in the debug environment and ensures that lazy imports are added to `__all__`.

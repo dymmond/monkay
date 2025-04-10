@@ -42,7 +42,7 @@ To develop for Monkay, create a fork of the [Monkay repository](https://github.c
 After, clone your fork with the follow command replacing `YOUR-USERNAME` wih your GitHub username:
 
 ```shell
-$ git clone https://github.com/YOUR-USERNAME/edgy_guardian
+$ git clone https://github.com/YOUR-USERNAME/monkay.git
 ```
 
 edgy_guardian also uses [hatch](https://hatch.pypa.io/latest/) for its development, testing and release

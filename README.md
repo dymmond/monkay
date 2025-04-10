@@ -1,42 +1,56 @@
-# monkay
+# Monkay
 
-[![PyPI - Version](https://img.shields.io/pypi/v/monkay.svg)](https://pypi.org/project/monkay)
-[![PyPI - Python Version](https://img.shields.io/pypi/pyversions/monkay.svg)](https://pypi.org/project/monkay)
+## What is Monkay?
 
------
+**Monkay** is a powerful tool designed to address common challenges in complex software projects, especially those that evolve over time. It’s built to solve issues such as deprecated names, lazy imports, side effects, and the need for dynamic extension support.
+
+In large projects, particularly when working with frameworks like Django, application components need to interact in a modular way. **Monkay** facilitates this by allowing the easy registration of extensions, flexible import handling, and dynamic configuration of settings—all while ensuring that there are no dependency conflicts, and that extensions can build on each other smoothly.
+
+Some of the key features **Monkay** provides are:
+
+- **Lazy imports**: Minimize side effects and ensure efficient resource management.
+- **Self-registering extensions**: Similar to Django models, extensions can register themselves and be reordered without causing dependency issues.
+- **Thread-safety**: Handle multiple threads accessing different parts of the application, ensuring consistency and stability.
+- **Async-friendly testing**: Easily test applications with different settings and environments using **Monkay’s** context variables.
+- **Dynamic settings management**: Overwrite settings temporarily, similar to how Django handles configurations.
+
+With **Monkay**, testing becomes a breeze, and managing extensions and settings in dynamic, multithreaded applications is no longer a headache. It simplifies complex setups and allows you to focus on building rather than managing dependencies.
+
+If you're ready to dive deeper, check out our [Tutorial](tutorial.md) to get started.
+
+---
 
 ## Installation
+
+To get started with **Monkay**, follow these installation steps:
+
+### Step 1: Install Monkay
+
+You can install **Monkay** via **pip** from PyPI:
 
 ```shell
 pip install monkay
 ```
 
-## What is Monkay for?
+### Step 2: Python Version Requirement
 
-Imagine a large software project which evolves. Old names should be deprecated. Imports
-should be lazy so sideeffects are minimized.
-But on the other hand you have self-registering parts like extensions or like Django models.
+**Monkay** requires Python 3.9 or later to function correctly. Ensure that you have the appropriate Python version installed:
 
-Multiple threads access application parts and tests with different settings are also a requirement
-now things get really complicated.
+```shell
+python --version
+```
 
-This project solves the problems.
-Monkay is a monkey-patcher with async features, preload and extension support (and some more).
-Extension registrations can be reordered so there are also no dependency issues and extensions can build on each other.
-Tests are possible by an async friendly approach via context variables so every situation can be easily tested.
+If your Python version is below 3.9, you will need to upgrade to a compatible version.
 
-For application frameworks Monkay provides settings which can also temporarily overwritten like in Django and
-optionally setting names for preloads and extensions.
-
-You may want to continue to the [Tutorial](./docs/tutorial.md)
+---
 
 ## FAQ
 
-### Monkay is a misspelling of monkey
+### Why is Monkay called "Monkay"?
 
-I know. It is intentional.
+Yes, **Monkay** is a playful variation of "monkey." Here's why:
 
-First the name is quite unique and short.
+- **Unique and Memorable**: The name **Monkay** stands out and is easy to remember.
+- **Trademark Issues**: "Monkey" is already widely used, so we opted for something distinct while still keeping the playful theme.
 
-Second the name monkey is already occupied.
-
+So, while it may look like a typo, it's entirely intentional—and a bit of fun too!

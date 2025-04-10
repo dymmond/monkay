@@ -1,39 +1,42 @@
 # Cages
 
-Cages are transparent proxies to context variables. It forwards all function calls to the wrapped object so it behaves
-normal in most cases like the original despite all operations are executed on the contextvar clone of the original.
-The original is copied via copy or optionally via deepcopy.
+**Cages** are transparent proxies to context variables. They forward all function calls to the wrapped object, making it behave normally in most cases, just like the original. However, all operations are executed on a **ContextVar** clone of the original object. The original is copied via `copy.copy()` by default, or optionally via `copy.deepcopy()` for deep copies.
 
-This allows monkey patching other libraries which are not async safe. Even from other libraries,
+**Monkay** Cages allow for monkey-patching other libraries that are not async-safe. This is especially useful in scenarios where you need to wrap or proxy non-async-safe code for compatibility with an asynchronous application, ensuring safe operations even in multi-threaded contexts.
+
+---
 
 ## Usage
 
-There are two ways
+There are two ways to register a Cage:
 
-1. registering via self registering (recommended)
-2. registering manually
+1. **Self-registering (Recommended)**
+2. **Manual registration**
 
-The first way is recommended because it can be detected if it would nest another Cage object.
-In this case it would just skip the initialization and the old Cage is kept.
+The **self-registering** method is recommended because it can automatically detect if another Cage object is
+nested within it. In such cases, it skips re-initializing the Cage and keeps the existing one, ensuring that
+multiple libraries can patch other libraries without fear of overwriting each other’s Cages.
 
-Advantage of this: multiple libraries can patch other libraries without fearing to overwrite another cage.
+### Example: Self-registering Cage
 
-``` python
+```python
 from monkay import Cage
 
 foo = []
 foo2: list
 
-# we can move an existing variable in a cage
-Cage(globals(), name="foo", update_fn=lambda overwrite, new_original: new_original+overwrite)
-# we can inject
+# Move an existing variable into a cage
+Cage(globals(), name="foo", update_fn=lambda overwrite, new_original: new_original + overwrite)
+
+# Inject a new Cage
 Cage(globals(), [], name="foo2")
-# we can manually assign
+
+# Manually assign
 original: list = []
 cage_for_original = Cage(globals(), name="original", skip_self_register=True)
 
-foo.add("a")
-foo.add("b")
+foo.append("a")
+foo.append("b")
 assert foo == ["a", "b"]
 
 with foo.monkay_with_override(["b", "c"]):
@@ -44,90 +47,149 @@ with foo.monkay_with_original() as original:
     assert original == []
     original.append("updated")
 
-# thanks to the update function
+# Thanks to the update function
 assert foo == ["updated", "a", "b"]
 ```
-### `monkay_with_override` method
 
-The monkay_with_override takes two arguments:
+### `monkay_with_override` Method
 
-- The overwrite value. Mandatory
-- `allow_value_update` (keyword-only). Default True.
+The `monkay_with_override` method allows you to override the current value in the **Cage** with new data for a
+limited scope. It takes two arguments:
 
-The last one is for updates to the original. When the original value is updated
-then the local value in the context variable is also updated.
+- **overwrite** (Mandatory): The new value you want to assign to the context variable.
+- **allow_value_update** (Keyword-only, default: `True`): Allows updating the original value when the context
+- variable is updated.
 
-### With thread Lock
+If `allow_value_update` is `True`, when the original value is updated, the local value in the context variable
+is also updated.
 
-Cages are async safe designed. They can even protect updates of the original via locks.
-With `use_wrapper_for_reads=True` inconsistent states for non-async safe copyable structures are prevented.
+---
 
-``` python
+## With Thread Lock
+
+**Cages** are designed to be **async-safe**, meaning they can be safely used in asynchronous environments.
+Additionally, they can protect updates to the original object using locks to ensure thread safety.
+
+### Example: Using Thread Lock for Safety
+
+```python
 from threading import Lock
 from monkay import Cage
 
 foo: list
-Cage(globals(), [], name="foo", original_wrapper=Lock(),  update_fn=lambda overwrite, new_original: new_original+overwrite)
+Cage(globals(), [], name="foo", original_wrapper=Lock(), update_fn=lambda overwrite, new_original: new_original + overwrite)
 
-# now threadsafe
+# Now threadsafe
 with foo.monkay_with_original() as original:
     assert original == []
     original.append("updated")
 ```
 
-### Preloads
+In the above example, we use a `Lock()` to ensure that updates to the original object are done safely in a
+multi-threaded environment.
 
-Of course cages support also preloads. See [Tutorial](./tutorial.md) for examples and the syntax.
+---
 
+## Preloads
 
-### Using deep copy
+Cages also support **preloads**, which are useful for setting initial values before any operation happens.
+Preloads allow you to provide default values or configurations before any context variable manipulation occurs.
 
-By default when no contextvariable was initialized the original is copied via `copy.copy()` into the contextvariable.
-By providing `deep_copy=True` `copy.deepcopy()` is used.
+For a detailed explanation and syntax of preloading, please refer to the [Tutorial](./tutorial.md).
 
+---
+
+## Using Deep Copy
+
+By default, when no context variable has been initialized, the original object is copied via `copy.copy()`
+into the context variable. However, if you require a deep copy of the original object (to avoid shallow copying issues), you can provide the `deep_copy=True` parameter when initializing the Cage.
+
+```python
+Cage(globals(), name="foo", deep_copy=True)
+```
+
+This ensures that the original object is copied deeply, meaning all nested objects are also copied, rather
+than simply referenced.
+
+---
 
 ## TransparentCage
 
-This is a subclass of Cage also exposing a ContextVar like interface. You can use them as container as well as a
-ContextVar.
+**TransparentCage** is a subclass of `Cage` that exposes a **ContextVar-like** interface. It behaves as a container
+for the context variable while also allowing you to interact with it like a `ContextVar`.
 
-A simpler variant is just prefixing the ContextVar public methods and attributes:
+In simpler terms, a `TransparentCage` is just a **Cage** that behaves exactly like a context variable but with
+additional functionality.
 
-`name`, `set`, `reset` and `get` become
+### Public Methods:
+- `monkay_name`
+- `monkay_set`
+- `monkay_reset`
+- `monkay_get`
 
-`monkay_name`, `monkay_set`, `monkay_reset` and `monkay_get`.
+These methods are essentially prefixes to the corresponding **ContextVar** methods. The **TransparentCage** simply
+redirects these methods to the underlying **ContextVar**, providing additional context handling.
 
-What TransparentCage is doing is just redirecting.
+---
 
-## Advanced
+## Advanced Features
 
-### New context variable name
+### New Context Variable Name
 
-By default a context-variable is created and injected to globals with the pattern:
+By default, when a context variable is created, it is injected into the global scope with the name pattern: `"_{name}_ctx"`, where `name` is the provided name. You can define a custom name pattern for the context variable by providing the `context_var_name` parameter.
 
-`"_{name}_ctx"` where name is the provided name.
+```python
+Cage(globals(), name="foo", context_var_name="custom_pattern_{name}_ctx")
+```
 
-You can define a different by providing the parameter
+### Accessing the Proxied Object Directly
 
-`context_var_name="different_pattern"` optionally with the name placeholder.
+Proxying the context variable introduces slight overhead. If you need to access the proxied object directly (the copy of the original object stored in the context variable), you can use the `monkay_proxied()` method.
 
-### Access proxied object direct
+```python
+foo_copy = foo.monkay_proxied()
+```
 
-Proxying the context variable has a slight overhead. You can access the proxied object (the copy of the original in the contextvar)
-via `cage.monkay_proxied()`.
+This will give you direct access to the proxied object, bypassing the normal context variable proxying.
 
-### Skip wrapper
+### Skipping the Wrapper
 
-Sometimes you want to skip the wrapper for this call
+In some cases, you may want to skip the wrapper for a specific operation. You can do this using the `monkay_with_original()` method with the `use_wrapper=False` argument:
 
-`cage.monkay_with_original(use_wrapper=False)`
+```python
+with foo.monkay_with_original(use_wrapper=False):
+    # Perform operations directly on the original without the wrapper
+    pass
+```
 
-And if you want to persist the contextvar without wrapper despite having `use_wrapper_for_reads=True` set, use:
+Alternatively, if you want to persist the context variable without the wrapper, you can use the `monkay_conditional_update_copy()` method:
 
-`cage.monkay_conditional_update_copy(use_wrapper=False)`
+```python
+foo.monkay_conditional_update_copy(use_wrapper=False)
+```
 
-You can also do the inverse by calling, when having `use_wrapper_for_reads=False` (default):
-`cage.monkay_conditional_update_copy(use_wrapper=True)`
+This allows you to control the application of the wrapper at runtime for more granular control.
 
-Or disable/enable the wrapper for reading when accessing the proxied object directly (only when an update is happening)
-`cage.monkay_proxied(use_wrapper=True)`
+---
+
+### Managing Wrapper Usage
+
+If you have specific needs regarding wrapper usage when accessing proxied objects, **Monkay** gives you
+fine-grained control:
+
+- **When reading the proxied object** (with no updates happening):
+  You can control the wrapper usage with `use_wrapper=True` or `use_wrapper=False` based on your needs.
+
+- **When updating**:
+  You can toggle whether to use the wrapper with `monkay_proxied(use_wrapper=True)` or `monkay_proxied(use_wrapper=False)` based on the operation you're performing.
+
+---
+
+## Summary of Key Features
+
+- **Transparent Proxying**: Cages act as transparent proxies to context variables, allowing you to work with non-async-safe libraries in an async environment.
+- **Self-registration**: Automatically registers cages and prevents overwriting, ensuring compatibility with multiple libraries.
+- **Thread-Safe Operations**: Cages can be used safely in multi-threaded applications with locks for protecting updates.
+- **Preloads and Deep Copies**: Support for preloading values and deep copies for more complex structures.
+- **Direct Access to Proxied Objects**: Access the original object in the context variable via `monkay_proxied()`.
+- **Wrapper Control**: Flexibility to skip or control the wrapper around the proxied object when required.
