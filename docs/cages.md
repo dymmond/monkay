@@ -1,3 +1,8 @@
+---
+hide:
+  - navigation
+---
+
 # Cages
 
 **Cages** are transparent proxies to context variables. They forward all function calls to the wrapped object, making it behave normally in most cases, just like the original. However, all operations are executed on a **ContextVar** clone of the original object. The original is copied via `copy.copy()` by default, or optionally via `copy.deepcopy()` for deep copies.

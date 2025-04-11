@@ -1,3 +1,8 @@
+---
+hide:
+  - navigation
+---
+
 # Release notes
 
 ## Version 0.3.0
