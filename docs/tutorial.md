@@ -1,3 +1,8 @@
+---
+hide:
+  - navigation
+---
+
 # Tutorial
 
 **Monkay** simplifies dynamic imports, extension management, settings handling, and much more. This tutorial walks you through the essential steps for using **Monkay** in your projects.

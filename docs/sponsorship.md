@@ -1,3 +1,8 @@
+---
+hide:
+  - navigation
+---
+
 # Help Monkay
 
 Do you like **Monkay** and would like to help Monkay, other user and the author?

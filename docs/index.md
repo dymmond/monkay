@@ -1,3 +1,8 @@
+---
+hide:
+  - navigation
+---
+
 # Monkay
 
 ## What is Monkay?

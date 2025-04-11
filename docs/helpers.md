@@ -1,3 +1,8 @@
+---
+hide:
+  - navigation
+---
+
 # Helpers
 
 **Monkay** comes with several useful helper functions to assist in managing imports, handling attributes, and working with modules. These helpers streamline the process of loading and managing dependencies in a flexible and robust way.

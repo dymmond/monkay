@@ -1,3 +1,8 @@
+---
+hide:
+  - navigation
+---
+
 # Specials
 
 **Monkay** provides several special features that enhance flexibility, handle lazy imports, manage extensions, and ensure thread-safety and asynchronous safety. These features can be critical when building dynamic applications that need fine-grained control over imports, settings, and extensions.
