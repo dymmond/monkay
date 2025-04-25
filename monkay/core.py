@@ -342,7 +342,7 @@ class Monkay(
             if settings is Undefined
             else self.with_settings(
                 cast("SETTINGS_DEFINITION_TYPE | Literal[False]", settings),
-                evaluate_settings_with=evaluate_settings_with or {},
+                evaluate_settings_with=evaluate_settings_with,
             )
         )
         ctx_instance = (

@@ -10,6 +10,7 @@ hide:
 ### Added
 
 - Add `with_full_overwrite` helper method which sets multiple contexts.
+- Add `evaluate_settings_with` parameter to `with_settings`.
 
 ### Changed
 

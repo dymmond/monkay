@@ -15,7 +15,7 @@ For testing purposes, **Monkay** provides three context manager methods that all
 
 ### Available Context Managers:
 
-1. **`with_settings(settings, *, evaluate_settings_with=None)`**: Temporarily overwrites the settings for the scope of the context. Optionally evaluate settings.
+1. **`with_settings(settings, *, evaluate_settings_with=None)`**: Temporarily overwrites the settings for the scope of the context. Optionally evaluate settings with provided parameters as dict. Enable evaluation by providing a dict.
 2. **`with_extensions(extensions_dict, *, apply_extensions=False)`**: Temporarily overwrites the extensions for the scope. The `apply_extensions` flag controls whether extensions are applied during the overwrite.
 3. **`with_instance(instance, *, apply_extensions=False, use_extensions_overwrite=True)`**: Temporarily overwrites the instance for the scope. You can also apply extensions and control the overwrite behavior using the respective flags.
 
@@ -28,8 +28,8 @@ from monkay import Monkay
 
 monkay = Monkay(globals(), settings_path="", with_extensions=True, with_instance=True)
 
-# Overwrite settings temporarily
-with monkay.with_settings({"setting_name": "new_value"}):
+# Overwrite settings temporarily and evaluate it
+with monkay.with_settings({"setting_name": "new_value"}, evaluate_settings_with={}):
     assert monkay.settings.setting_name == "new_value"
 
 # Overwrite extensions temporarily
@@ -59,8 +59,9 @@ Parameters which need a feature enabled when creating the monkay instance:
 
 Extra parameters:
 
-**apply_extensions** - Apply extensions. Only used when `extensions` parameter is used.
-**evaluate_settings_with** - Pass options to `with_settings`. Only used when `settings` parameter is used.
+- **apply_extensions** - Apply extensions. Only used when `extensions` parameter is used.
+- **evaluate_settings_with** - Pass options to `with_settings` parameter `evaluate_settings_with`. Only used when `settings` parameter is used.
+  To enable evaluation pass `{}`
 
 #### Example:
 
@@ -70,7 +71,7 @@ from monkay import Monkay
 monkay = Monkay(globals(), settings_path="", with_extensions=True, with_instance=True)
 
 # Overwrite everything temporarily and use a clean extensions set
-with monkay.with_full_overwrite(extensions={}, settings=..., instance=...):
+with monkay.with_full_overwrite(extensions={}, settings=..., instance=..., evaluate_settings_with={}):
     assert monkay.instance is new_instance
 ```
 
