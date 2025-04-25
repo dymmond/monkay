@@ -47,12 +47,7 @@ class Monkay(
         with_extensions: str | bool = False,
         extension_order_key_fn: None
         | Callable[[ExtensionProtocol[INSTANCE, SETTINGS]], Any] = None,
-        settings_path: str
-        | Callable[[], SETTINGS]
-        | SETTINGS
-        | type[SETTINGS]
-        | Literal[False]
-        | None = None,
+        settings_path: SETTINGS_DEFINITION_TYPE | Literal[False] = None,
         preloads: Iterable[str] = (),
         settings_preloads_name: str = "",
         settings_extensions_name: str = "",
