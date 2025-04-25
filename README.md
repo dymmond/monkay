@@ -16,7 +16,7 @@ Some of the key features **Monkay** provides are:
 
 With **Monkay**, testing becomes a breeze, and managing extensions and settings in dynamic, multithreaded applications is no longer a headache. It simplifies complex setups and allows you to focus on building rather than managing dependencies.
 
-If you're ready to dive deeper, check out our [Tutorial](tutorial.md) to get started.
+If you're ready to dive deeper, check out our [Tutorial](https://monkay.dymmond.com/tutorial/) to get started.
 
 ---
 
@@ -54,3 +54,8 @@ Yes, **Monkay** is a playful variation of "monkey." Here's why:
 - **Trademark Issues**: "Monkey" is already widely used, so we opted for something distinct while still keeping the playful theme.
 
 So, while it may look like a typo, it's entirely intentional—and a bit of fun too!
+
+
+## Links
+
+[Documentation](https://monkay.dymmond.com)
