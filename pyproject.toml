@@ -75,6 +75,10 @@ extra-dependencies = ["mypy>=1.0.0"]
 [tool.hatch.envs.types.scripts]
 check = "mypy monkay {args}"
 
+[tool.hatch.envs.hatch-static-analysis]
+# disables custom ruff rules, required to align with pre-commit
+config-path = "none"
+dependencies = ["ruff==0.11.5"]
 
 [tool.hatch.envs.hatch-test]
 extra-dependencies = ["pydantic_settings"]

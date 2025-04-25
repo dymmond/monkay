@@ -5,10 +5,17 @@ from contextlib import contextmanager
 from contextvars import ContextVar
 from functools import cached_property
 from inspect import isclass
-from typing import Generic, cast
+from typing import TYPE_CHECKING, Generic, Literal, TypeVar, cast
 
 from .base import UnsetError, load
 from .types import SETTINGS
+
+if TYPE_CHECKING:
+    T = TypeVar("T")
+    type SETTINGS_DEFINITION_BASE_TYPE[T] = T | type[T] | str | None
+    type SETTINGS_DEFINITION_TYPE[T] = (
+        SETTINGS_DEFINITION_BASE_TYPE[T] | Callable[[], SETTINGS_DEFINITION_BASE_TYPE[T]]
+    )
 
 
 class MonkaySettings(Generic[SETTINGS]):
@@ -40,19 +47,35 @@ class MonkaySettings(Generic[SETTINGS]):
     This attribute specifies the key used to access extension configurations.
     """
 
-    _settings_var: ContextVar[tuple[SETTINGS, list[bool]] | None] | None = None
+    _settings_var: (
+        ContextVar[tuple[list[SETTINGS_DEFINITION_TYPE[SETTINGS]], list[bool]] | None] | None
+    ) = None
     """
     A context variable that allows temporary overriding of the loaded settings.
     This variable enables context-specific settings manipulation, allowing for temporary
     replacement or modification of the underlying settings.
     """
 
-    _settings_definition: SETTINGS | type[SETTINGS] | str | Callable[[], SETTINGS] | None = None
+    _settings_definition: SETTINGS_DEFINITION_TYPE[SETTINGS] = None
     """
     The definition of the settings, which can be a settings instance, a settings class,
     a string representing a settings path, or a callable that returns a settings instance.
     This attribute provides flexibility in how settings are defined and loaded.
     """
+
+    def _parse_settings(self, settings_path_or_class: type[SETTINGS] | str) -> SETTINGS | None:
+        # only class and string pathes
+        if isclass(settings_path_or_class):
+            return settings_path_or_class()
+        assert isinstance(settings_path_or_class, str), (
+            f"Not a settings object: {settings_path_or_class}"
+        )
+        if not settings_path_or_class:
+            return None
+        settings: SETTINGS | type[SETTINGS] = load(settings_path_or_class, package=self.package)
+        if isclass(settings):
+            settings = settings()
+        return cast(SETTINGS, settings)
 
     @cached_property
     def _loaded_settings(self) -> SETTINGS | None:
@@ -67,18 +90,7 @@ class MonkaySettings(Generic[SETTINGS]):
         Raises:
             AssertionError: if the _settings_definition is not a class or a string.
         """
-        # only class and string pathes
-        if isclass(self._settings_definition):
-            return self._settings_definition()
-        assert isinstance(
-            self._settings_definition, str
-        ), f"Not a settings object: {self._settings_definition}"
-        if not self._settings_definition:
-            return None
-        settings: SETTINGS | type[SETTINGS] = load(self._settings_definition, package=self.package)
-        if isclass(settings):
-            settings = settings()
-        return cast(SETTINGS, settings)
+        return self._parse_settings(cast("str | type[SETTINGS]", self._settings_definition))
 
     @property
     def settings_evaluated(self) -> bool:
@@ -140,26 +152,32 @@ class MonkaySettings(Generic[SETTINGS]):
         assert self._settings_var is not None, "Monkay not enabled for settings"
         _settings_var = self._settings_var.get()
         if _settings_var is not None:
-            settings: SETTINGS | Callable[[], SETTINGS] | None = _settings_var[0]
+            settings: SETTINGS_DEFINITION_TYPE[SETTINGS] = _settings_var[0][0]
         else:
             settings = None
         if settings is None:
             # when settings_path is callable bypass the cache, for forwards
-            settings = (
-                self._loaded_settings
-                if isinstance(self._settings_definition, str) or isclass(self._settings_definition)
-                else self._settings_definition
-            )
+            settings = self.__dict__.get("_loaded_settings", self._settings_definition)
         if callable(settings):
             settings = settings()
-        if settings is None:
+        if isinstance(settings, str) or isclass(settings):
+            parsed_settings = self._parse_settings(settings)
+            if parsed_settings is None:
+                raise UnsetError("Settings are unset or the settings function returned None.")
+            if _settings_var is not None:
+                # save parsed settings and return
+                _settings_var[0][0] = parsed_settings
+                return parsed_settings
+            else:
+                # lazy load via string or class and set to _loaded_settings
+                self._loaded_settings = parsed_settings
+                return self._loaded_settings
+        if settings is None or settings is False:
             raise UnsetError("Settings are not set yet or the settings function returned None.")
         return settings
 
     @settings.setter
-    def settings(
-        self, value: str | Callable[[], SETTINGS] | SETTINGS | type[SETTINGS] | None
-    ) -> None:
+    def settings(self, value: SETTINGS_DEFINITION_TYPE[SETTINGS] | Literal[False]) -> None:
         """
         Sets the settings definition for the Monkay instance.
 
@@ -197,7 +215,9 @@ class MonkaySettings(Generic[SETTINGS]):
         self.__dict__.pop("_loaded_settings", None)
 
     @contextmanager
-    def with_settings(self, settings: SETTINGS | None) -> Generator[SETTINGS | None]:
+    def with_settings(
+        self, settings: SETTINGS_DEFINITION_TYPE[SETTINGS] | None | Literal[False]
+    ) -> Generator[SETTINGS_DEFINITION_TYPE[SETTINGS] | Literal[False] | None]:
         """
         Temporarily sets and yields new settings for the Monkay instance within a context.
 
@@ -205,7 +225,7 @@ class MonkaySettings(Generic[SETTINGS]):
         It yields the provided settings and then restores the original settings after the context exits.
 
         Args:
-            settings: The new settings to use within the context, or None to temporarily use the real settings.
+            settings: The new settings to use within the context, or None to temporarily use the real settings. Use False, "" to disable settings access temporarily
 
         Yields:
             The provided settings.
@@ -215,7 +235,9 @@ class MonkaySettings(Generic[SETTINGS]):
         """
         assert self._settings_var is not None, "Monkay not enabled for settings"
         # why None, for temporary using the real settings
-        token = self._settings_var.set((settings, [False]) if settings is not None else None)
+        token = self._settings_var.set(
+            (["" if settings is False else settings], [False]) if settings is not None else None
+        )
         try:
             yield settings
         finally:
