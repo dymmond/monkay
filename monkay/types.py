@@ -8,27 +8,28 @@ from typing import (
     Literal,
     NamedTuple,
     Protocol,
-    TypeAlias,
     TypedDict,
     TypeVar,
+    Union,
     overload,
     runtime_checkable,
 )
 
+if sys.version_info >= (3, 10):
+    from typing import TypeAlias
+else:
+    from typing_extensions import TypeAlias
+
 if TYPE_CHECKING:
     from .core import Monkay
 
-if TYPE_CHECKING and sys.version_info >= (3, 10):
-    SETTINGS_T = TypeVar("SETTINGS_T")
+SETTINGS_T = TypeVar("SETTINGS_T")
 
-    SETTINGS_DEFINITION_BASE_TYPE: TypeAlias = SETTINGS_T | type[SETTINGS_T] | str | None
-    SETTINGS_DEFINITION_TYPE: TypeAlias = (
-        SETTINGS_DEFINITION_BASE_TYPE[SETTINGS_T]
-        | Callable[[], SETTINGS_DEFINITION_BASE_TYPE[SETTINGS_T]]
-    )
-else:
-    SETTINGS_DEFINITION_TYPE = Any
-    SETTINGS_DEFINITION_BASE_TYPE = Any
+SETTINGS_DEFINITION_BASE_TYPE: TypeAlias = Union[SETTINGS_T, type[SETTINGS_T], str, None]
+SETTINGS_DEFINITION_TYPE: TypeAlias = Union[
+    SETTINGS_DEFINITION_BASE_TYPE[SETTINGS_T],
+    Callable[[], SETTINGS_DEFINITION_BASE_TYPE[SETTINGS_T]],
+]
 
 INSTANCE = TypeVar("INSTANCE")
 SETTINGS = TypeVar("SETTINGS")

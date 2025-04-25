@@ -30,7 +30,9 @@ classifiers = [
   "Programming Language :: Python :: Implementation :: PyPy",
   "License :: OSI Approved :: BSD License",
 ]
-dependencies = []
+dependencies = [
+  'typing_extensions; python_version<"3.10"'
+]
 
 [project.urls]
 Documentation = "https://github.com/devkral/monkay#readme"
