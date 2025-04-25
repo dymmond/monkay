@@ -5,6 +5,12 @@ hide:
 
 # Release notes
 
+## Version 0.4.1
+
+### Fixed
+
+- Update settings_path typing. This was overlooked when updating the types.
+
 ## Version 0.4.0
 
 ### Added
