@@ -7,6 +7,7 @@ from typing import (
     Literal,
     NamedTuple,
     Protocol,
+    TypeAlias,
     TypedDict,
     TypeVar,
     overload,
@@ -16,9 +17,12 @@ from typing import (
 if TYPE_CHECKING:
     from .core import Monkay
 
-    type SETTINGS_DEFINITION_BASE_TYPE[T] = T | type[T] | str | None
-    type SETTINGS_DEFINITION_TYPE[T] = (
-        SETTINGS_DEFINITION_BASE_TYPE[T] | Callable[[], SETTINGS_DEFINITION_BASE_TYPE[T]]
+    SETTINGS_T = TypeVar("SETTINGS_T")
+
+    SETTINGS_DEFINITION_BASE_TYPE: TypeAlias = SETTINGS_T | type[SETTINGS_T] | str | None
+    SETTINGS_DEFINITION_TYPE: TypeAlias = (
+        SETTINGS_DEFINITION_BASE_TYPE[SETTINGS_T]
+        | Callable[[], SETTINGS_DEFINITION_BASE_TYPE[SETTINGS_T]]
     )
 else:
     SETTINGS_DEFINITION_TYPE = Any
