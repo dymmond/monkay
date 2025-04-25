@@ -34,6 +34,52 @@ def test_preloaded():
     assert "tests.targets.fn_module" in sys.modules
 
 
+def test_full_overwrite(capsys):
+    import tests.targets.module_full as mod
+
+    app = mod.FakeApp()
+    old_settings = mod.monkay.settings
+    with mod.monkay.with_full_overwrite(
+        extensions={},
+        instance=app,
+        settings=lambda: "tests.targets.settings:Settings",
+        apply_extensions=False,
+    ):
+        assert old_settings is not mod.monkay.settings
+        captured_out = capsys.readouterr().out
+        assert captured_out == ""
+        settings_obj = mod.monkay.settings
+        assert mod.monkay.settings is settings_obj
+
+
+def test_full_overwrite2(capsys):
+    import tests.targets.module_full as mod
+
+    app = mod.FakeApp()
+    old_settings = mod.monkay.settings
+    with mod.monkay.with_full_overwrite(
+        extensions={},
+        instance=app,
+        settings=lambda: "tests.targets.settings:Settings",
+    ):
+        assert old_settings is not mod.monkay.settings
+        captured_out = capsys.readouterr().out
+        assert captured_out == "settings_extension1 called\nsettings_extension2 called\n"
+
+
+def test_full_partly(capsys):
+    import tests.targets.module_full as mod
+
+    app = mod.FakeApp()
+    old_settings = mod.monkay.settings
+    with mod.monkay.with_full_overwrite(
+        instance=app,
+    ):
+        assert old_settings is mod.monkay.settings
+        captured_out = capsys.readouterr().out
+        assert captured_out == "settings_extension1 called\nsettings_extension2 called\n"
+
+
 def test_attrs():
     import tests.targets.module_full as mod
 

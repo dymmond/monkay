@@ -9,6 +9,8 @@ hide:
 
 ### Added
 
+- Add `with_full_overwrite` helper method which sets multiple contexts.
+
 ### Changed
 
 - When string or class is provided by a callable for settings it is parsed and cached.

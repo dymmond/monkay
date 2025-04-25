@@ -15,7 +15,7 @@ For testing purposes, **Monkay** provides three context manager methods that all
 
 ### Available Context Managers:
 
-1. **`with_settings(settings)`**: Temporarily overwrites the settings for the scope of the context.
+1. **`with_settings(settings, *, evaluate_settings_with=None)`**: Temporarily overwrites the settings for the scope of the context. Optionally evaluate settings.
 2. **`with_extensions(extensions_dict, *, apply_extensions=False)`**: Temporarily overwrites the extensions for the scope. The `apply_extensions` flag controls whether extensions are applied during the overwrite.
 3. **`with_instance(instance, *, apply_extensions=False, use_extensions_overwrite=True)`**: Temporarily overwrites the instance for the scope. You can also apply extensions and control the overwrite behavior using the respective flags.
 
@@ -26,7 +26,7 @@ These context managers provide a flexible way to test different configurations o
 ```python
 from monkay import Monkay
 
-monkay = Monkay(globals())
+monkay = Monkay(globals(), settings_path="", with_extensions=True, with_instance=True)
 
 # Overwrite settings temporarily
 with monkay.with_settings({"setting_name": "new_value"}):
@@ -42,6 +42,37 @@ with monkay.with_instance(new_instance, apply_extensions=False):
 ```
 
 These context managers are especially useful for writing isolated and repeatable tests, where you may want to modify the environment without affecting the global state.
+
+### Full overwrite
+
+If multiple attributes should be simulated, e.g. for a virtual monkay environment, you can use
+`with_full_overwrite`. The advantage: you have already the right order set.
+Note: when not enabling a feature in monkay it will cause an error to provide a parameter for it.
+
+#### Parameters
+
+Parameters which need a feature enabled when creating the monkay instance:
+
+**extensions** - Set an extra extensions set like with `with_extensions`. You might want to set it to {} for a clean extensions set.
+**settings** - Overwrite the settings if specified. It types matches the `with_settings` contextmanager.
+**instance** - Overwrite the instance if specified. It types matches the `with_instance` contextmanager.
+
+Extra parameters:
+
+**apply_extensions** - Apply extensions. Only used when `extensions` parameter is used.
+**evaluate_settings_with** - Pass options to `with_settings`. Only used when `settings` parameter is used.
+
+#### Example:
+
+```python
+from monkay import Monkay
+
+monkay = Monkay(globals(), settings_path="", with_extensions=True, with_instance=True)
+
+# Overwrite everything temporarily and use a clean extensions set
+with monkay.with_full_overwrite(extensions={}, settings=..., instance=...):
+    assert monkay.instance is new_instance
+```
 
 ---
 

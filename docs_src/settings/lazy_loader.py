@@ -1,4 +1,3 @@
-
 import os
 from dataclasses import dataclass
 
@@ -9,13 +8,16 @@ from monkay import Monkay
 class Settings:
     env: str
 
+
 @dataclass
 class ProductionSettings(Settings):
     env: str = "production"
 
+
 @dataclass
 class DebugSettings(Settings):
     env: str = "debug"
+
 
 def lazy_loader():
     # Lazy setup based on environment variables
@@ -28,10 +30,11 @@ def lazy_loader():
         # not a class, will evaluated always on access
         return DebugSettings()
 
+
 monkay = Monkay(
     globals(),
     # Required for initializing settings feature
-    settings_path=lazy_loader
+    settings_path=lazy_loader,
 )
 
 # Now the settings are applied

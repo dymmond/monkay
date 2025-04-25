@@ -16,6 +16,13 @@ from typing import (
 if TYPE_CHECKING:
     from .core import Monkay
 
+    type SETTINGS_DEFINITION_BASE_TYPE[T] = T | type[T] | str | None
+    type SETTINGS_DEFINITION_TYPE[T] = (
+        SETTINGS_DEFINITION_BASE_TYPE[T] | Callable[[], SETTINGS_DEFINITION_BASE_TYPE[T]]
+    )
+else:
+    SETTINGS_DEFINITION_TYPE = Any
+    SETTINGS_DEFINITION_BASE_TYPE = Any
 
 INSTANCE = TypeVar("INSTANCE")
 SETTINGS = TypeVar("SETTINGS")
@@ -61,6 +68,16 @@ class DeprecatedImport(TypedDict, total=False):
 
 
 DeprecatedImport.__required_keys__ = frozenset({"deprecated"})
+
+
+class EvaluateSettingsParameters(TypedDict, total=False):
+    on_conflict: Literal["error", "keep", "replace"]
+    ignore_import_errors: bool
+    ignore_preload_import_errors: bool
+    onetime: bool
+
+
+EvaluateSettingsParameters.__required_keys__ = frozenset()
 
 
 class PRE_ADD_LAZY_IMPORT_HOOK(Protocol):

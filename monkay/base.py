@@ -6,6 +6,9 @@ from importlib import import_module
 from typing import Any
 
 
+class Undefined: ...
+
+
 def load(path: str, *, allow_splits: str = ":.", package: None | str = None) -> Any:
     """
     Dynamically loads an object from a module given its path.

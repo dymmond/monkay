@@ -1,21 +1,14 @@
 from __future__ import annotations
 
-from collections.abc import Callable, Generator
+from collections.abc import Generator
 from contextlib import contextmanager
 from contextvars import ContextVar
 from functools import cached_property
 from inspect import isclass
-from typing import TYPE_CHECKING, Generic, Literal, TypeVar, cast
+from typing import Generic, Literal, cast
 
 from .base import UnsetError, load
-from .types import SETTINGS
-
-if TYPE_CHECKING:
-    T = TypeVar("T")
-    type SETTINGS_DEFINITION_BASE_TYPE[T] = T | type[T] | str | None
-    type SETTINGS_DEFINITION_TYPE[T] = (
-        SETTINGS_DEFINITION_BASE_TYPE[T] | Callable[[], SETTINGS_DEFINITION_BASE_TYPE[T]]
-    )
+from .types import SETTINGS, SETTINGS_DEFINITION_TYPE, EvaluateSettingsParameters
 
 
 class MonkaySettings(Generic[SETTINGS]):
@@ -91,6 +84,16 @@ class MonkaySettings(Generic[SETTINGS]):
             AssertionError: if the _settings_definition is not a class or a string.
         """
         return self._parse_settings(cast("str | type[SETTINGS]", self._settings_definition))
+
+    def evaluate_settings(
+        self,
+        *,
+        on_conflict: Literal["error", "keep", "replace"] = "error",
+        ignore_import_errors: bool = False,
+        ignore_preload_import_errors: bool = True,
+        onetime: bool = True,
+    ) -> bool:
+        raise NotImplementedError()
 
     @property
     def settings_evaluated(self) -> bool:
@@ -216,7 +219,10 @@ class MonkaySettings(Generic[SETTINGS]):
 
     @contextmanager
     def with_settings(
-        self, settings: SETTINGS_DEFINITION_TYPE[SETTINGS] | None | Literal[False]
+        self,
+        settings: SETTINGS_DEFINITION_TYPE[SETTINGS] | None | Literal[False],
+        *,
+        evaluate_settings_with: EvaluateSettingsParameters | None = None,
     ) -> Generator[SETTINGS_DEFINITION_TYPE[SETTINGS] | Literal[False] | None]:
         """
         Temporarily sets and yields new settings for the Monkay instance within a context.
@@ -226,6 +232,7 @@ class MonkaySettings(Generic[SETTINGS]):
 
         Args:
             settings: The new settings to use within the context, or None to temporarily use the real settings. Use False, "" to disable settings access temporarily
+            evaluate_settings_with: Evaluate settings with the parameters provided.
 
         Yields:
             The provided settings.
@@ -239,6 +246,8 @@ class MonkaySettings(Generic[SETTINGS]):
             (["" if settings is False else settings], [False]) if settings is not None else None
         )
         try:
+            if evaluate_settings_with is not None:
+                self.evaluate_settings(**evaluate_settings_with)
             yield settings
         finally:
             self._settings_var.reset(token)

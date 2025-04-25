@@ -1,4 +1,3 @@
-
 from foo import monkay as foo_monkay
 
 
@@ -10,4 +9,6 @@ def get_application():
     foo_monkay.evaluate_preloads(extra_preloads)
     foo_monkay.evaluate_settings()
     return ...
+
+
 app = get_application()

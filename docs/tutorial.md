@@ -308,3 +308,10 @@ monkay = Monkay(
 ```
 
 This example updates `__all__` dynamically in the debug environment and ensures that lazy imports are added to `__all__`.
+
+
+### Sub monkay environment
+
+Sometimes you want to provide temporily a different environment for a code path. You can do this with:
+
+[`with_full_overwrite`](testing.md#full-overwrite)
