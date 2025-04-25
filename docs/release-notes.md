@@ -5,6 +5,19 @@ hide:
 
 # Release notes
 
+## Version 0.4.0
+
+### Added
+
+- Add `with_full_overwrite` helper method which sets multiple contexts.
+- Add `evaluate_settings_with` parameter to `with_settings`.
+
+### Changed
+
+- When string or class is provided by a callable for settings it is parsed and cached.
+  This allows lazy parsing of environment variables, so they can be changed programmatically.
+- Allow unsetting settings via with_settings by using False or "".
+
 ## Version 0.3.0
 
 ### Breaking

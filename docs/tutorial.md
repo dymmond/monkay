@@ -26,49 +26,18 @@ pip install monkay
 Below is an example of how to set up **Monkay** in your project. You can use **Monkay** to manage dynamic imports, lazy loading, settings, extensions, and more.
 
 ```python title="foo/__init__.py"
-from monkay import Monkay
-
-monkay = Monkay(
-    # Required for auto-hooking
-    globals(),
-    with_extensions=True,
-    with_instance=True,
-    settings_path="settings_path:Settings",
-    preloads=["tests.targets.module_full_preloaded1:load"],
-    # Warning: settings names have a catch
-    settings_preloads_name="preloads",
-    settings_extensions_name="extensions",
-    uncached_imports=["settings"],
-    lazy_imports={
-        "bar": "tests.targets.fn_module:bar",
-        "settings": lambda: monkay.settings,
-    },
-    deprecated_lazy_imports={
-        "deprecated": {
-            "path": "tests.targets.fn_module:deprecated",
-            "reason": "old.",
-            "new_attribute": "super_new",
-        }
-    },
-)
+{!>../docs_src/tutorial/full_example_init.py}
 ```
 
 This configuration sets up **Monkay** with several features:
 - **Lazy imports** for `bar` and `settings`.
+- **Lazy evaluated settings_path** for being able to update the environment variable in code.
 - **Deprecated lazy imports** for `deprecated`.
 - **Preloads** and **extensions** for dynamic configuration.
 - **Uncached imports** to prevent caching specific imports like settings.
 
 ```python title="foo/main.py"
-from foo import monkay
-
-def get_application():
-    # sys.path updates
-    important_preloads = [...]
-    monkay.evaluate_preloads(important_preloads, ignore_import_errors=False)
-    extra_preloads = [...]
-    monkay.evaluate_preloads(extra_preloads)
-    monkay.evaluate_settings()
+{!>../docs_src/tutorial/full_example_main.py}
 ```
 
 In `main.py`, the application is initialized by evaluating preloads and settings, ensuring that all required dependencies are loaded before use.
@@ -79,7 +48,7 @@ In `main.py`, the application is initialized by evaluating preloads and settings
 
 After providing **Monkay**, if you need more control over the `__all__` variable, you can disable the automatic update of `__all__` by setting `skip_all_update=True`. You can later update it manually using `Monkay.update_all_var`.
 
-**Warning**: Using `settings_preloads_name` or `settings_extensions_name` can sometimes cause circular dependency issues. To avoid such issues, ensure that you call `evaluate_settings()` later in the setup process. For more information, refer to [Settings Preloads and Extensions](#settings-preloads-andextensions).
+**Warning**: Using `settings_preloads_name` or `settings_extensions_name` can sometimes cause circular dependency issues. To avoid such issues, ensure that you call `evaluate_settings()` later in the setup process. For more information, refer to [Settings Preloads and Extensions](#settings-extensions-and-preloads).
 
 ---
 
@@ -136,7 +105,7 @@ monkay = Monkay(
     globals(),
     with_extensions=True,
     with_instance=True,
-    settings_path=os.environ.get("MONKAY_SETTINGS", "example.default.path.settings:Settings"),
+    settings_path=lambda: os.environ.get("MONKAY_SETTINGS", "example.default.path.settings:Settings"),
     settings_preloads_name="preloads",
     settings_extensions_name="extensions",
     uncached_imports=["settings"],
@@ -144,7 +113,8 @@ monkay = Monkay(
 )
 ```
 
-Here, the `settings_path` is determined by an environment variable, and **Monkay** will use `settings` as the main settings object.
+Here, the `settings_path` is determined by an environment variable when accessed, and **Monkay** will use `settings` as the main settings object.
+The object will be cached.
 
 ```python title="settings.py"
 from pydantic_settings import BaseSettings
@@ -238,7 +208,7 @@ monkay = Monkay(
     globals(),
     with_extensions=True,
     with_instance=True,
-    settings_path=os.environ.get("MONKAY_SETTINGS", "example.default.path.settings:settings"),
+    settings_path=lambda: os.environ.get("MONKAY_SETTINGS", "example.default.path.settings:settings"),
     settings_preloads_name="preloads",
     settings_extensions_name="extensions",
 )
@@ -338,3 +308,10 @@ monkay = Monkay(
 ```
 
 This example updates `__all__` dynamically in the debug environment and ensures that lazy imports are added to `__all__`.
+
+
+### Sub monkay environment
+
+Sometimes you want to provide temporily a different environment for a code path. You can do this with:
+
+[`with_full_overwrite`](testing.md#full-overwrite)

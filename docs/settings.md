@@ -18,26 +18,13 @@ settings object.
 ### Example: Child Package
 
 ```python
-import os
-from monkay import Monkay
-
-monkay = Monkay(
-    globals(),
-    settings_path=os.environ.get("MONKAY_CHILD_SETTINGS", "foo.test:example") or ""
-)
+{!> ../docs_src/settings/forwarding_child.py !}
 ```
 
 ### Example: Main Package
 
 ```python
-import os
-import child
-
-monkay = Monkay(
-    globals(),
-    settings_path=os.environ.get("MONKAY_MAIN_SETTINGS", "foo.test:example") or ""
-)
-child.monkay.settings = lambda: monkay.settings
+{!> ../docs_src/settings/forwarding_main.py !}
 ```
 
 With this setup, the child package will use the settings from the main package, ensuring that all configurations
@@ -53,29 +40,11 @@ evaluation of settings until later in the application lifecycle.
 ### Example:
 
 ```python
-import os
-from monkay import Monkay
-
-monkay = Monkay(
-    globals(),
-    # Required for initializing settings feature
-    settings_path=""
-)
-
-# Lazy setup based on environment variables
-if not os.environ.get("DEBUG"):
-    monkay.settings = os.environ.get("MONKAY_MAIN_SETTINGS", "foo.test:example") or ""
-elif os.environ.get("PERFORMANCE"):
-    monkay.settings = DebugSettings
-else:
-    monkay.settings = DebugSettings()
-
-# Now the settings are applied
-monkay.evaluate_settings()
+{!> ../docs_src/settings/lazy_loader.py !}
 ```
 
 This approach allows for flexible configuration of the application, based on the environment, while deferring the
-actual evaluation of settings.
+actual evaluation of settings and os.environ.
 
 ---
 
@@ -88,19 +57,7 @@ and handle errors more gracefully.
 ### Example:
 
 ```python
-import os
-from monkay import Monkay
-
-monkay = Monkay(
-    globals(),
-    # Required for initializing settings feature
-    settings_path=""
-)
-
-def find_settings():
-    for path in ["a.settings", "b.settings.develop"]:
-        if monkay.evaluate_settings(ignore_import_errors=True):
-            break
+{!> ../docs_src/settings/multi_stage.py !}
 ```
 
 In this example, **Monkay** tries to evaluate settings from both `a.settings` and `b.settings.develop`, ignoring
@@ -147,16 +104,11 @@ It is reset when new settings are assigned and is initially set to `False` for i
 **Monkay** supports various ways of assigning settings:
 
 - **String or Class**: Initialization happens the first time the settings are accessed and are cached afterward.
-- **Function**: The function gets evaluated each time the settings are accessed. If caching is required,
-- it is up to the function to handle it (e.g., forwarding settings can rely on caching in the main settings).
+- **Function**: The function gets evaluated each time the settings are accessed when returning an instance (useful for forwarding).
+  Otherwise for types like str and class, the result is cached and used instead until the settings cache is cleared.
 
 You can also use the `settings_path` parameter to assign a settings location directly, using either a string or
-class reference.
-
-### Caching Behavior:
-- **String or Class**: These types are cached after the first evaluation.
-- **Function**: Functions are re-evaluated on every access. If needed, the caching mechanism can be handled within
-the function (e.g., caching results in the main settings).
+class reference. The caching behavior is the same.
 
 ---
 
@@ -166,20 +118,7 @@ Sometimes, you may need to forward old settings to the **Monkay** settings. Whil
 creating a forwarder is easy. Here's an example:
 
 ```python
-from typing import Any, cast, TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from .global_settings import EdgySettings
-
-class SettingsForward:
-    def __getattribute__(self, name: str) -> Any:
-        import edgy
-        return getattr(edgy.monkay.settings, name)
-
-# Pretend the forward is the real object
-settings = cast("EdgySettings", SettingsForward())
-
-__all__ = ["settings"]
+{!> ../docs_src/settings/forwarder.py !}
 ```
 
 ### Note:

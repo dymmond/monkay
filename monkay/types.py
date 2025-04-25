@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import sys
 from collections.abc import Callable
 from typing import (
     TYPE_CHECKING,
@@ -9,13 +10,26 @@ from typing import (
     Protocol,
     TypedDict,
     TypeVar,
+    Union,
     overload,
     runtime_checkable,
 )
 
+if sys.version_info >= (3, 10):
+    from typing import TypeAlias
+else:
+    from typing_extensions import TypeAlias
+
 if TYPE_CHECKING:
     from .core import Monkay
 
+SETTINGS_T = TypeVar("SETTINGS_T")
+
+SETTINGS_DEFINITION_BASE_TYPE: TypeAlias = Union[SETTINGS_T, type[SETTINGS_T], str, None]
+SETTINGS_DEFINITION_TYPE: TypeAlias = Union[
+    SETTINGS_DEFINITION_BASE_TYPE[SETTINGS_T],
+    Callable[[], SETTINGS_DEFINITION_BASE_TYPE[SETTINGS_T]],
+]
 
 INSTANCE = TypeVar("INSTANCE")
 SETTINGS = TypeVar("SETTINGS")
@@ -61,6 +75,16 @@ class DeprecatedImport(TypedDict, total=False):
 
 
 DeprecatedImport.__required_keys__ = frozenset({"deprecated"})
+
+
+class EvaluateSettingsParameters(TypedDict, total=False):
+    on_conflict: Literal["error", "keep", "replace"]
+    ignore_import_errors: bool
+    ignore_preload_import_errors: bool
+    onetime: bool
+
+
+EvaluateSettingsParameters.__required_keys__ = frozenset()
 
 
 class PRE_ADD_LAZY_IMPORT_HOOK(Protocol):

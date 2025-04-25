@@ -124,6 +124,10 @@ def test_settings_overwrite():
             assert mod.monkay.settings is not new_settings
             assert mod.monkay.settings is not old_settings
 
+        # now access with disabled settings
+        with mod.monkay.with_settings(False), pytest.raises(UnsetError):
+            mod.monkay.settings  # noqa
+
 
 @pytest.mark.parametrize("transform", [lambda x: x, lambda x: x.model_dump()])
 @pytest.mark.parametrize("mode", ["error", "replace", "keep"])

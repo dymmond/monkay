@@ -9,7 +9,9 @@ class Extension:
 
     def apply(self, app: Monkay) -> None:
         assert isinstance(app, Monkay)
-        assert app.instance.is_fake_app
+        instance = app.instance
+        assert instance.is_fake_app
+        assert instance is app.instance
         print(f"{self.name} called")
 
 

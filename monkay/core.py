@@ -1,23 +1,27 @@
 from __future__ import annotations
 
 import warnings
-from collections.abc import Callable, Iterable
+from collections.abc import Callable, Generator, Iterable
+from contextlib import contextmanager, nullcontext
 from contextvars import ContextVar
 from typing import (
     Any,
     Generic,
     Literal,
+    cast,
 )
 
 from ._monkay_exports import MonkayExports
 from ._monkay_instance import MonkayInstance
 from ._monkay_settings import MonkaySettings
-from .base import UnsetError, evaluate_preloads, get_value_from_settings
+from .base import Undefined, UnsetError, evaluate_preloads, get_value_from_settings
 from .types import (
     INSTANCE,
     PRE_ADD_LAZY_IMPORT_HOOK,
     SETTINGS,
+    SETTINGS_DEFINITION_TYPE,
     DeprecatedImport,
+    EvaluateSettingsParameters,
     ExtensionProtocol,
 )
 
@@ -309,3 +313,49 @@ class Monkay(
         return self.evaluate_settings(
             on_conflict=on_conflict, ignore_import_errors=ignore_import_errors, onetime=True
         )
+
+    @contextmanager
+    def with_full_overwrite(
+        self,
+        *,
+        extensions: dict[str, ExtensionProtocol[INSTANCE, SETTINGS]]
+        | None
+        | type[Undefined] = Undefined,
+        settings: SETTINGS_DEFINITION_TYPE | Literal[False] | type[Undefined] = Undefined,
+        instance: INSTANCE | None | type[Undefined] = Undefined,
+        apply_extensions: bool = True,
+        evaluate_settings_with: EvaluateSettingsParameters | None = None,
+    ) -> Generator[None]:
+        """
+        Apply all overwrites in the correct order. Useful for testing or sub-environments
+        """
+        ctx_extensions = (
+            nullcontext()
+            if extensions is Undefined
+            else self.with_extensions(
+                cast("dict[str, ExtensionProtocol[INSTANCE, SETTINGS]] | None", extensions),
+                apply_extensions=False,
+            )
+        )
+        ctx_settings = (
+            nullcontext()
+            if settings is Undefined
+            else self.with_settings(
+                cast("SETTINGS_DEFINITION_TYPE | Literal[False]", settings),
+                evaluate_settings_with=evaluate_settings_with,
+            )
+        )
+        ctx_instance = (
+            nullcontext()
+            if instance is Undefined
+            else self.with_instance(
+                cast("INSTANCE | None", instance), apply_extensions=apply_extensions
+            )
+        )
+
+        with (
+            ctx_extensions,
+            ctx_settings,
+            ctx_instance,
+        ):
+            yield

@@ -30,7 +30,9 @@ classifiers = [
   "Programming Language :: Python :: Implementation :: PyPy",
   "License :: OSI Approved :: BSD License",
 ]
-dependencies = []
+dependencies = [
+  'typing_extensions; python_version<"3.10"'
+]
 
 [project.urls]
 Documentation = "https://github.com/devkral/monkay#readme"
@@ -75,6 +77,10 @@ extra-dependencies = ["mypy>=1.0.0"]
 [tool.hatch.envs.types.scripts]
 check = "mypy monkay {args}"
 
+[tool.hatch.envs.hatch-static-analysis]
+# disables custom ruff rules, required to align with pre-commit
+config-path = "none"
+dependencies = ["ruff==0.11.5"]
 
 [tool.hatch.envs.hatch-test]
 extra-dependencies = ["pydantic_settings"]
