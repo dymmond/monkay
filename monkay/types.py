@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import sys
 from collections.abc import Callable
 from typing import (
     TYPE_CHECKING,
@@ -17,6 +18,7 @@ from typing import (
 if TYPE_CHECKING:
     from .core import Monkay
 
+if TYPE_CHECKING and sys.version_info >= (3, 10):
     SETTINGS_T = TypeVar("SETTINGS_T")
 
     SETTINGS_DEFINITION_BASE_TYPE: TypeAlias = SETTINGS_T | type[SETTINGS_T] | str | None
