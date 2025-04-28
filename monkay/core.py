@@ -319,7 +319,7 @@ class Monkay(
         settings: SETTINGS_DEFINITION_TYPE | Literal[False] | type[Undefined] = Undefined,
         instance: INSTANCE | None | type[Undefined] = Undefined,
         apply_extensions: bool = False,
-        evaluate_settings_with: EvaluateSettingsParameters | None | bool = None,
+        evaluate_settings_with: EvaluateSettingsParameters | None = None,
     ) -> Generator[None]:
         """
         Apply all overwrites in the correct order. Useful for testing or sub-environments
