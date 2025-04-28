@@ -86,6 +86,8 @@ def test_unset_settings(value):
 def test_settings_overwrite():
     import tests.targets.module_full as mod
 
+    mod.monkay.evaluate_settings()
+
     assert mod.monkay.settings_evaluated
 
     old_settings = mod.monkay.settings
@@ -133,6 +135,8 @@ def test_settings_overwrite():
 @pytest.mark.parametrize("mode", ["error", "replace", "keep"])
 def test_settings_overwrite_evaluate_modes(mode, transform):
     import tests.targets.module_full as mod
+
+    mod.monkay.evaluate_settings()
 
     with mod.monkay.with_settings(
         transform(

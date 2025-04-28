@@ -318,7 +318,7 @@ class Monkay(
         | type[Undefined] = Undefined,
         settings: SETTINGS_DEFINITION_TYPE | Literal[False] | type[Undefined] = Undefined,
         instance: INSTANCE | None | type[Undefined] = Undefined,
-        apply_extensions: bool = True,
+        apply_extensions: bool = False,
         evaluate_settings_with: EvaluateSettingsParameters | None = None,
     ) -> Generator[None]:
         """
@@ -337,14 +337,15 @@ class Monkay(
             if settings is Undefined
             else self.with_settings(
                 cast("SETTINGS_DEFINITION_TYPE | Literal[False]", settings),
-                evaluate_settings_with=evaluate_settings_with,
+                evaluate_settings_with=None,
             )
         )
         ctx_instance = (
             nullcontext()
             if instance is Undefined
             else self.with_instance(
-                cast("INSTANCE | None", instance), apply_extensions=apply_extensions
+                cast("INSTANCE | None", instance),
+                apply_extensions=False,
             )
         )
 
@@ -353,4 +354,13 @@ class Monkay(
             ctx_settings,
             ctx_instance,
         ):
+            # evaluate here because the ctxmanagers have not the information from the contextvars
+            # evaluate settings also without settings instance
+            if evaluate_settings_with is not None and evaluate_settings_with is not False:
+                if evaluate_settings_with is True:
+                    evaluate_settings_with = {}
+                self.evaluate_settings(**evaluate_settings_with)
+            # apply extensions also without extra instance
+            if apply_extensions and self._extensions_var is not None:
+                self.apply_extensions()
             yield

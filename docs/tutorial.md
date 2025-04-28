@@ -214,7 +214,7 @@ monkay = Monkay(
 )
 
 monkay.evaluate_settings()
-monkay.set_instance(load(settings.APP_PATH))
+monkay.set_instance(settings.APP_PATH)
 ```
 
 ---
@@ -255,6 +255,11 @@ class Settings(BaseSettings):
     extensions: list[Any] = [Extension]
     APP_PATH: str = "settings.App"
 ```
+
+### Apply extensions
+
+Applying extensions is automatically done when setting the instance and extensions are enabled.
+If this behaviour is unwanted, you can pass `apply_extensions=False` to `set_instance`
 
 ---
 

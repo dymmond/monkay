@@ -5,6 +5,17 @@ hide:
 
 # Release notes
 
+## Version 0.4.2
+
+### Changed
+
+- Parameter `apply_extensions` of `with_full_overwrite` defaults now to `False`.
+
+### Fixed
+
+- `with_full_overwrite` overwrote wrong settings/extensions due to a too early invocation.
+- `with_full_overwrite` was not composable, the `apply_extensions` parameter worked only with an instance.
+
 ## Version 0.4.1
 
 ### Fixed

@@ -38,7 +38,6 @@ monkay = Monkay(
         }
     },
 )
-monkay.evaluate_settings()
 
 
 def stringify_all_plain(separate_by_category: bool):
