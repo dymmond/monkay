@@ -40,8 +40,8 @@ jobs:
         run: "scripts/install"
       - name: "Run linting"
         if: steps.filters.outputs.src == 'true' || steps.filters.outputs.workflows == 'true'
-        run: "hatch fmt"
+        run: "uv run hatch fmt"
       - name: "Run mypy"
-        run: "hatch run types:check"
+        run: "uv run hatch run types:check"
       - name: "Run tests"
-        run: "hatch test"
+        run: "uv run hatch test"
