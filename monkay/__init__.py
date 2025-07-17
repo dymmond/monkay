@@ -18,7 +18,6 @@ from .types import (
 
 __all__ = [
     "Monkay",
-    "SortedExportsEntry",
     "DeprecatedImport",
     "PRE_ADD_LAZY_IMPORT_HOOK",
     "ExtensionProtocol",
