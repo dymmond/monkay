@@ -20,7 +20,7 @@ jobs:
     runs-on: "ubuntu-latest"
     strategy:
       matrix:
-        python-version: ["3.9", "3.10", "3.11", "3.12", "3.13"]
+        python-version: ["3.10", "3.11", "3.12", "3.13"]
     steps:
       - uses: "actions/checkout@v4"
       - uses: "actions/setup-python@v5"
@@ -37,11 +37,14 @@ jobs:
           curl -LsSf https://astral.sh/uv/install.sh | sh
       - name: "Install dependencies"
         if: steps.cache.outputs.cache-hit != 'true'
-        run: "scripts/install"
+        run: |
+          pip install go-task-bin
+          pip install hatch
+          scripts/install
       - name: "Run linting"
         if: steps.filters.outputs.src == 'true' || steps.filters.outputs.workflows == 'true'
-        run: "uv run hatch fmt"
+        run: "hatch fmt"
       - name: "Run mypy"
-        run: "uv run hatch run types:check"
+        run: "hatch run types:check"
       - name: "Run tests"
-        run: "uv run hatch test"
+        run: "hatch test"

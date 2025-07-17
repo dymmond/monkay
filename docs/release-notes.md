@@ -5,7 +5,18 @@ hide:
 
 # Release notes
 
-## Version 0.4.2
+## 0.4.3
+
+### Changed
+
+- Removed support for Python 3.9.
+
+### Fixed
+
+- Broken internal import.
+- License.
+
+## 0.4.2
 
 ### Changed
 
@@ -16,13 +27,13 @@ hide:
 - `with_full_overwrite` overwrote wrong settings/extensions due to a too early invocation.
 - `with_full_overwrite` was not composable, the `apply_extensions` parameter worked only with an instance.
 
-## Version 0.4.1
+## 0.4.1
 
 ### Fixed
 
 - Update settings_path typing. This was overlooked when updating the types.
 
-## Version 0.4.0
+## 0.4.0
 
 ### Added
 
@@ -35,7 +46,7 @@ hide:
   This allows lazy parsing of environment variables, so they can be changed programmatically.
 - Allow unsetting settings via with_settings by using False or "".
 
-## Version 0.3.0
+## 0.3.0
 
 ### Breaking
 
@@ -54,7 +65,7 @@ Also failed imports are not neccessarily side-effect free.
 - Setting the `evaluate_settings` parameter in `__init__` is now an error.
 - For the parameter `ignore_import_errors` of `evaluate_settings` the default value is changed to `False`.
 
-## Version 0.2.2
+## 0.2.2
 
 ### Added
 
@@ -65,14 +76,14 @@ Also failed imports are not neccessarily side-effect free.
 - Handle edge-cases better when settings are unset or disabled.
 - Don't touch settings in `evaluate_settings` when not required.
 
-## Version 0.2.1
+## 0.2.1
 
 ### Fixed
 
 - Add AttributeError to the ignored import errors.
 - Wrong return value for `evaluate_settings_once` when already evaluated.
 
-## Version 0.2.0
+## 0.2.0
 
 ### Added
 
@@ -94,7 +105,7 @@ Also failed imports are not neccessarily side-effect free.
 - Assigning an empty dictionary to settings deletes the settings. This should only work for some falsy values.
 - Cage `with_overwrite` didn't escape the last update compontent properly.
 
-## Version 0.1.1
+## 0.1.1
 
 ### Changed
 
@@ -106,7 +117,7 @@ Also failed imports are not neccessarily side-effect free.
 - Missing `__dir__` injection so lazy imports didn't show up in `dir()`.
 - Error when adding lazy imports later without pre-existing lazy imports.
 
-## Version 0.1.0
+## 0.1.0
 
 ### Changed
 
@@ -119,7 +130,7 @@ Also failed imports are not neccessarily side-effect free.
 
 - `with_instance` without `with_extensions` was not working.
 
-## Version 0.0.9
+## 0.0.9
 
 ### Added
 
@@ -130,7 +141,7 @@ Also failed imports are not neccessarily side-effect free.
 
 - Lazy setup.
 
-## Version 0.0.8
+## 0.0.8
 
 ### Added
 
@@ -151,20 +162,20 @@ Also failed imports are not neccessarily side-effect free.
 
 - Use the right instance for apply_settings in set_instance.
 
-## Version 0.0.7
+## 0.0.7
 
 ### Fixed
 
 - Missing py.typed.
 - Fix double dot in reason. This parameter alone should control the punctuation.
 
-## Version 0.0.6
+## 0.0.6
 
 ### Fixed
 
 - Re-exports were not detected correctly.
 
-## Version 0.0.5
+## 0.0.5
 
 ### Added
 
@@ -176,7 +187,7 @@ Also failed imports are not neccessarily side-effect free.
 - `find_missing` test method has some different error names.
 - `find_missing` doesn't require the all_var anymore.
 
-## Version 0.0.4
+## 0.0.4
 
 ### Added
 
@@ -190,7 +201,7 @@ Also failed imports are not neccessarily side-effect free.
 - Rename typo `settings_preload_name` to `settings_preloads_name`.
 - Fix relative imports.
 
-## Version 0.0.3
+## 0.0.3
 
 ### Added
 
@@ -200,6 +211,6 @@ Also failed imports are not neccessarily side-effect free.
 
 - It is now allowed to provide own loaders instead of the path.
 
-## Version 0.0.1
+## 0.0.1
 
 Initial release

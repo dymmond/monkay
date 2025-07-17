@@ -7,7 +7,7 @@ name = "monkay"
 dynamic = ["version"]
 description = 'The ultimate preload, settings, lazy import manager.'
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 keywords = ["monkey-patching", "settings", "lazy-imports"]
 authors = [
   { name = "alex", email = "devkral@web.de" },
@@ -21,7 +21,6 @@ classifiers = [
   "Typing :: Typed",
   "Development Status :: 5 - Production/Stable",
   "Programming Language :: Python",
-  "Programming Language :: Python :: 3.9",
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
