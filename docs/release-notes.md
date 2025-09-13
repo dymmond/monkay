@@ -5,6 +5,12 @@ hide:
 
 # Release notes
 
+## 0.5.0
+
+### Added
+
+- ASGI lifespan support.
+
 ## 0.4.3
 
 ### Changed
