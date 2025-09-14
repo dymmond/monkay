@@ -1,6 +1,6 @@
 import sys
 import threading
-from asyncio import Event, Queue, Task, create_task
+from asyncio import Event, Queue, Task, create_task, get_running_loop
 from collections.abc import AsyncGenerator, Awaitable, Callable, MutableMapping
 from contextlib import AsyncExitStack, asynccontextmanager, suppress
 from functools import partial, wraps
@@ -70,16 +70,19 @@ async def lifespan(app: BoundASGIApp) -> AsyncGenerator[BoundASGIApp, None]:
         await cleanup()
 
 
-async def _lifespan_task_helper(app: ASGIApp, startup_complete: Event) -> None:
-    bogoevent = Event()
-    async with lifespan(app):
-        startup_complete.set()
-        # wait until cancellation
-        await bogoevent.wait()
-
-
 # why not contextvar? this is really thread local while contextvars can be copied.
 lifespan_local = threading.local()
+
+
+async def _lifespan_task_helper(app: ASGIApp, startup_complete: Event) -> None:
+    bogoevent = Event()
+    try:
+        async with lifespan(app):
+            startup_complete.set()
+            # wait until cancellation
+            await bogoevent.wait()
+    finally:
+        lifespan_local.active = False
 
 
 @overload
@@ -103,14 +106,24 @@ def LifespanProvider(
         receive: Callable[[], Awaitable[MutableMapping[str, Any]]],
         send: Callable[[MutableMapping[str, Any]], Awaitable[None]],
     ) -> None:
+        # threadlocal is not sufficient, we need to check the loop
+        loop = getattr(lifespan_local, "loop", None)
+        rloop = get_running_loop()
+        if loop and loop is not rloop:
+            lifespan_local.started = False
+            if _task_ref := getattr(lifespan_local, "_task_ref", None):
+                _task_ref.cancel()
+        loop = lifespan_local.loop = rloop
         started = getattr(lifespan_local, "started", False)
         if sniff and scope.get("type") == "lifespan":
             # is already started in the same thread
             if started:
                 raise RuntimeError("We should not execute lifespan twice in the same thread.")
             lifespan_local.started = True
+            started = True
         if not started:
             lifespan_local.started = True
+            started = True
             startup_complete = Event()
             lifespan_local._task_ref = create_task(_lifespan_task_helper(app, startup_complete))
             await startup_complete.wait()
