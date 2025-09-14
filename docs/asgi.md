@@ -11,8 +11,8 @@ Wraps an asgi application as AsyncContextManager and run the lifespan protocol.
 
 For use with asgi servers which does not implement the lifespan protocol. Here we just hook into the eventloop and bring lifespan to the ASGI app.
 
-!!! Warning
-    Do not use with ASGI servers which speak the lifespan protocol.
+When the asgi server supports lifespans, the `LifespanProvider` doesn't inject its own lifespan task. However if the autodetection fails,
+it can be disabled with `sniff=False`.
 
 ## LifespanHook
 

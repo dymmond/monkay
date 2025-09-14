@@ -59,7 +59,7 @@ async def test_lifespan(probe):
 
 
 @pytest.mark.parametrize("probe", [stub, stub_empty, stub_raise])
-async def test_lifespan2(probe):
+async def test_lifespan_sniff(probe):
     setup_complete = False
     shutdown_complete = False
 
@@ -77,9 +77,49 @@ async def test_lifespan2(probe):
     assert not setup_complete
     assert not shutdown_complete
     async with lifespan(
+        # sniff detects the lifespan of the server and doesn't start another lifespan task
         LifespanProvider(LifespanHook(probe, setup=helper_setup, do_forward=False))
     ):
         assert setup_complete
         assert not shutdown_complete
     assert setup_complete
     assert shutdown_complete
+
+
+async def test_lifespan_sniff_started():
+    provider = LifespanProvider(LifespanHook(stub, do_forward=False))
+    async with lifespan(provider):
+
+        async def stub_receive():
+            return {}
+
+        async def stub_send(msg: Any):
+            pass
+
+        # try a spec violation
+        with pytest.raises(RuntimeError):
+            await provider({"type": "lifespan"}, stub_receive, stub_send)
+
+
+async def test_lifespan_started_no_sniff():
+    provider = LifespanProvider(LifespanHook(stub, do_forward=False), sniff=False)
+    async with lifespan(provider):
+        count = 0
+
+        async def stub_receive():
+            nonlocal count
+            count += 1
+            if count == 1:
+                return {"type": "lifespan.startup"}
+            if count == 2:
+                return {"type": "lifespan.shutdown"}
+
+        message: Any = None
+
+        async def stub_send(msg: Any):
+            nonlocal message
+            message = msg
+
+        # this is a spec violation but is accepted because of sniff=False
+        await provider({"type": "lifespan"}, stub_receive, stub_send)
+        assert message["type"] == "lifespan.shutdown.complete"
