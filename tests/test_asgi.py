@@ -32,7 +32,8 @@ async def stub_empty(
 ) -> None: ...
 
 
-async def test_lifespan():
+@pytest.mark.parametrize("probe", [stub, stub_empty])
+async def test_lifespan(probe):
     setup_complete = False
     shutdown_complete = False
 
@@ -44,12 +45,12 @@ async def test_lifespan():
         nonlocal setup_complete
         setup_complete = True
         cm = AsyncExitStack()
-        cm.callback(helper_cleanup)
+        cm.push_async_callback(helper_cleanup)
         return cm
 
     assert not setup_complete
     assert not shutdown_complete
-    async with lifespan(LifespanHook(stub, setup=helper_setup, do_forward=False)):
+    async with lifespan(LifespanHook(probe, setup=helper_setup, do_forward=False)):
         assert setup_complete
         assert not shutdown_complete
 

@@ -1,6 +1,6 @@
 import sys
 import threading
-from asyncio import Event, Queue, create_task
+from asyncio import Event, Queue, Task, create_task
 from collections.abc import AsyncGenerator, Awaitable, Callable, MutableMapping
 from contextlib import AsyncExitStack, asynccontextmanager, suppress
 from functools import partial, wraps
@@ -23,12 +23,18 @@ async def lifespan(app: BoundASGIApp) -> AsyncGenerator[BoundASGIApp, None]:
     send_queue: Queue[MutableMapping[str, Any]] = Queue()
     receive_queue: Queue[MutableMapping[str, Any]] = Queue()
     state: MutableMapping[str, Any] = {}
-    await send_queue.put({"type": "lifespan.startup"})
-    await app(
-        {"type": "lifespan", "asgi": {"version": "3.0", "spec_version": "2.0"}, "state": state},
-        # inverted send, receive because we are emulating the server
-        send_queue.get,
-        receive_queue.put,
+    send_queue.put_nowait({"type": "lifespan.startup"})
+    task: Task = create_task(
+        app(  # type: ignore
+            {
+                "type": "lifespan",
+                "asgi": {"version": "3.0", "spec_version": "2.0"},
+                "state": state,
+            },
+            # inverted send, receive because we are emulating the server
+            send_queue.get,
+            receive_queue.put,
+        )
     )
     response = await receive_queue.get()
     match cast(Any, response.get("type")):
@@ -47,6 +53,8 @@ async def lifespan(app: BoundASGIApp) -> AsyncGenerator[BoundASGIApp, None]:
             return
         cleaned_up = True
         await send_queue.put({"type": "lifespan.shutdown"})
+        if task.done():
+            raise RuntimeError("Lifespan task errored", task.result())
         response = await receive_queue.get()
         match cast(Any, response.get("type")):
             case "lifespan.shutdown.complete":
@@ -162,6 +170,7 @@ def LifespanHook(
                 A wrapped `receive` callable that intercepts 'lifespan.startup'
                 and 'lifespan.shutdown' messages to execute the setup.
                 """
+                nonlocal shutdown_stack
                 # Await the message from the original receive callable.
                 message = await original_receive()
                 # Check if the message type is for lifespan startup.
@@ -180,7 +189,7 @@ def LifespanHook(
                             raise MuteInteruptException from None
                 # Check if the message type is for lifespan shutdown.
                 elif message["type"] == "lifespan.shutdown":  # noqa: SIM102
-                    if shutdown_stack is not None:  # type: ignore
+                    if shutdown_stack is not None:
                         try:
                             # Attempt to exit asynchronous context.
                             await shutdown_stack.aclose()
