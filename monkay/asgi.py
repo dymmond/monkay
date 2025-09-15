@@ -1,10 +1,16 @@
+"""ASGI helpers."""
+
+# Developer warning:
+# please do no expose this module in monkay.__init__.
+# this module depends on threading.locals and pulls them in.
+
 import sys
 import threading
-from asyncio import Event, Queue, Task, create_task, get_running_loop
+from asyncio import AbstractEventLoop, Event, Queue, Task, create_task, get_running_loop
 from collections.abc import AsyncGenerator, Awaitable, Callable, MutableMapping
 from contextlib import AsyncExitStack, asynccontextmanager, suppress
 from functools import partial, wraps
-from typing import Any, TypeVar, cast, overload
+from typing import Any, TypedDict, TypeVar, cast, overload
 
 from .types import ASGIApp
 
@@ -14,6 +20,12 @@ else:
     from typing_extensions import assert_never
 
 BoundASGIApp = TypeVar("BoundASGIApp", bound=ASGIApp)
+
+
+class ManagementState(TypedDict):
+    started: bool
+    loop: AbstractEventLoop | None
+    task: Task | None
 
 
 @asynccontextmanager
@@ -74,15 +86,23 @@ async def lifespan(app: BoundASGIApp) -> AsyncGenerator[BoundASGIApp, None]:
 lifespan_local = threading.local()
 
 
+def get_management_state() -> ManagementState:
+    if not hasattr(lifespan_local, "management_state"):
+        lifespan_local.management_state = ManagementState(started=False, task=None, loop=None)
+    return lifespan_local.management_state
+
+
 async def _lifespan_task_helper(app: ASGIApp, startup_complete: Event) -> None:
     bogoevent = Event()
+    state = get_management_state()
     try:
         async with lifespan(app):
             startup_complete.set()
             # wait until cancellation
             await bogoevent.wait()
     finally:
-        lifespan_local.started = False
+        state["started"] = False
+        state["task"] = None
 
 
 @overload
@@ -108,26 +128,28 @@ def LifespanProvider(
         receive: Callable[[], Awaitable[MutableMapping[str, Any]]],
         send: Callable[[MutableMapping[str, Any]], Awaitable[None]],
     ) -> None:
-        # threadlocal is not sufficient, we need to check the loop
-        loop = getattr(lifespan_local, "loop", None)
+        state = get_management_state()
+        started = state["started"]
         rloop = get_running_loop()
+        loop = state["loop"]
         if loop and loop is not rloop:
-            lifespan_local.started = False
-            if _task_ref := getattr(lifespan_local, "_task_ref", None):
-                _task_ref.cancel()
-        loop = lifespan_local.loop = rloop
-        started = getattr(lifespan_local, "started", False)
+            # trigger start
+            started = state["started"] = False
+            # cancel old loop task
+            if task_ref := state.get("task"):
+                task_ref.cancel()
         if sniff and scope.get("type") == "lifespan":
             # is already started in the same thread
             if started:
                 raise RuntimeError("We should not execute lifespan twice in the same thread.")
-            lifespan_local.started = True
-            started = True
+            # prevent start
+            started = state["started"] = True
+        loop = state["loop"] = rloop
         if not started:
-            lifespan_local.started = True
-            started = True
+            # init
+            started = state["started"] = True
             startup_complete = Event()
-            lifespan_local._task_ref = create_task(_lifespan_task_helper(app, startup_complete))
+            state["task"] = create_task(_lifespan_task_helper(app, startup_complete))
             await startup_complete.wait()
 
         await app(scope, receive, send)
@@ -192,32 +214,35 @@ def LifespanHook(
                 # Await the message from the original receive callable.
                 message = await original_receive()
                 # Check if the message type is for lifespan startup.
-                if message["type"] == "lifespan.startup":
-                    if setup is not None:
-                        try:
-                            # Attempt to enter the registry's asynchronous context,
-                            # typically establishing database connections.
-                            shutdown_stack = await setup()
-                        except Exception as exc:
-                            # If an exception occurs during startup, send a failed
-                            # message to the ASGI server.
-                            await send({"type": "lifespan.startup.failed", "msg": str(exc)})
-                            # Raise a custom exception to stop further lifespan
-                            # processing for this event.
-                            raise MuteInteruptException from None
-                # Check if the message type is for lifespan shutdown.
-                elif message["type"] == "lifespan.shutdown":  # noqa: SIM102
-                    if shutdown_stack is not None:
-                        try:
-                            # Attempt to exit asynchronous context.
-                            await shutdown_stack.aclose()
-                        except Exception as exc:
-                            # If an exception occurs during shutdown, send a failed
-                            # message to the ASGI server.
-                            await send({"type": "lifespan.shutdown.failed", "msg": str(exc)})
-                            # Raise a custom exception to stop further lifespan
-                            # processing for this event.
-                            raise MuteInteruptException from None
+                match message.get("type"):
+                    case "lifespan.startup":
+                        if setup is not None:
+                            try:
+                                # Attempt to enter the registry's asynchronous context,
+                                # typically establishing database connections.
+                                shutdown_stack = await setup()
+                            except Exception as exc:
+                                # If an exception occurs during startup, send a failed
+                                # message to the ASGI server.
+                                await send({"type": "lifespan.startup.failed", "msg": str(exc)})
+                                # Raise a custom exception to stop further lifespan
+                                # processing for this event.
+                                raise MuteInteruptException from None
+                    case "lifespan.shutdown":  # noqa: SIM102
+                        # Check if the message type is for lifespan shutdown.
+                        if shutdown_stack is not None:
+                            try:
+                                # Attempt to exit asynchronous context.
+                                await shutdown_stack.aclose()
+                            except Exception as exc:
+                                # If an exception occurs during shutdown, send a failed
+                                # message to the ASGI server.
+                                await send({"type": "lifespan.shutdown.failed", "msg": str(exc)})
+                                # Raise a custom exception to stop further lifespan
+                                # processing for this event.
+                                raise MuteInteruptException from None
+                    case _ as invalid:
+                        assert_never(invalid)
                 # Return the original message after processing.
                 return message
 
