@@ -104,6 +104,7 @@ async def test_lifespan_sniff_started():
             await provider({"type": "lifespan"}, stub_receive, stub_send)
 
 
+@pytest.mark.timeout(20)
 async def test_lifespan_started_no_sniff():
     provider = LifespanProvider(LifespanHook(stub, do_forward=False), sniff=False)
     with suppress(TimeoutError):
