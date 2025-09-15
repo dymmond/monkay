@@ -5,7 +5,7 @@ from typing import Any
 
 import pytest
 
-from monkay.asgi import LifespanHook, LifespanProvider, lifespan
+from monkay.asgi import LifespanHook, LifespanProvider, get_management_state, lifespan
 
 pytestmark = pytest.mark.anyio
 
@@ -131,6 +131,8 @@ async def test_lifespan_started_no_sniff():
         # this is a spec violation but is accepted because of sniff=False
         await provider({"type": "lifespan"}, stub_receive, stub_send)
         assert message["type"] == "lifespan.shutdown.complete"
+        state = get_management_state()
+        state["terminateevent"].set()
 
 
 async def test_LifespanProvider_forward():
