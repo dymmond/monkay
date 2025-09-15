@@ -17,6 +17,9 @@ async def stub(
     await send(await receive())
 
 
+stub.test_attribute = True
+
+
 async def stub_raise(
     scope: MutableMapping[str, Any],
     receive: Callable[[], Awaitable[MutableMapping[str, Any]]],
@@ -123,3 +126,13 @@ async def test_lifespan_started_no_sniff():
         # this is a spec violation but is accepted because of sniff=False
         await provider({"type": "lifespan"}, stub_receive, stub_send)
         assert message["type"] == "lifespan.shutdown.complete"
+
+
+async def test_LifespanProvider_forward():
+    provider = LifespanProvider(stub)
+    assert provider.test_attribute
+
+
+async def test_LifespanHook_forward():
+    provider = LifespanHook(stub)
+    assert provider.test_attribute

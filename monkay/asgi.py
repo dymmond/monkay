@@ -86,16 +86,18 @@ async def _lifespan_task_helper(app: ASGIApp, startup_complete: Event) -> None:
 
 
 @overload
-def LifespanProvider(app: ASGIApp, *, sniff: bool = True) -> ASGIApp: ...
+def LifespanProvider(app: BoundASGIApp, *, sniff: bool = True) -> BoundASGIApp: ...
 
 
 @overload
-def LifespanProvider(app: None, *, sniff: bool = True) -> Callable[[ASGIApp], ASGIApp]: ...
+def LifespanProvider(
+    app: None, *, sniff: bool = True
+) -> Callable[[BoundASGIApp], BoundASGIApp]: ...
 
 
 def LifespanProvider(
-    app: ASGIApp | None = None, *, sniff: bool = True
-) -> ASGIApp | Callable[[ASGIApp], ASGIApp]:
+    app: BoundASGIApp | None = None, *, sniff: bool = True
+) -> BoundASGIApp | Callable[[BoundASGIApp], BoundASGIApp]:
     """Make lifespan usage possible in servers which doesn't support the extension e.g. daphne."""
     if app is None:
         return partial(LifespanProvider, sniff=sniff)
@@ -130,7 +132,10 @@ def LifespanProvider(
 
         await app(scope, receive, send)
 
-    return app_wrapper
+    # forward attributes
+    app_wrapper.__getattr__ = lambda name: getattr(app, name)  # type: ignore
+
+    return cast(BoundASGIApp, app_wrapper)
 
 
 class MuteInteruptException(BaseException): ...
@@ -138,11 +143,11 @@ class MuteInteruptException(BaseException): ...
 
 @overload
 def LifespanHook(
-    app: ASGIApp,
+    app: BoundASGIApp,
     *,
     setup: Callable[[], Awaitable[AsyncExitStack]] | None = None,
     do_forward: bool = True,
-) -> ASGIApp: ...
+) -> BoundASGIApp: ...
 
 
 @overload
@@ -151,15 +156,15 @@ def LifespanHook(
     *,
     setup: Callable[[], Awaitable[AsyncExitStack]] | None = None,
     do_forward: bool = True,
-) -> Callable[[ASGIApp], ASGIApp]: ...
+) -> Callable[[BoundASGIApp], BoundASGIApp]: ...
 
 
 def LifespanHook(
-    app: ASGIApp | None = None,
+    app: BoundASGIApp | None = None,
     *,
     setup: Callable[[], Awaitable[AsyncExitStack]] | None = None,
     do_forward: bool = True,
-) -> ASGIApp | Callable[[ASGIApp], ASGIApp]:
+) -> BoundASGIApp | Callable[[BoundASGIApp], BoundASGIApp]:
     """Helper for creating a lifespan integration which forwards."""
     if app is None:
         return partial(LifespanHook, setup=setup, do_forward=do_forward)
@@ -245,4 +250,7 @@ def LifespanHook(
         with suppress(MuteInteruptException):
             await app(scope, receive, send)
 
-    return app_wrapper
+    # forward attributes
+    app_wrapper.__getattr__ = lambda name: getattr(app, name)  # type: ignore
+
+    return cast(BoundASGIApp, app_wrapper)

@@ -18,7 +18,7 @@ Some of the key features **Monkay** provides are:
 - **Thread-safety**: Handle multiple threads accessing different parts of the application, ensuring consistency and stability.
 - **Async-friendly testing**: Easily test applications with different settings and environments using **Monkay’s** context variables.
 - **Dynamic settings management**: Overwrite settings temporarily, similar to how Django handles configurations.
-- **Helpers for dynamic execution**: Easily load code or execute lifespans.
+- **Helpers for dynamic execution**: Easily load code or execute lifespans ([ASGI](./asgi.md)).
 
 With **Monkay**, testing becomes a breeze, and managing extensions and settings in dynamic, multithreaded applications is no longer a headache. It simplifies complex setups and allows you to focus on building rather than managing dependencies.
 
