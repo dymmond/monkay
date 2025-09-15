@@ -44,10 +44,14 @@ async def lifespan(
             receive_queue.put,
         )
     )
-    if timeout:
-        response = await wait_for(receive_queue.get(), timeout)
-    else:
-        response = await receive_queue.get()
+    try:
+        if timeout:
+            response = await wait_for(receive_queue.get(), timeout)
+        else:
+            response = await receive_queue.get()
+    except TimeoutError as exc:
+        task.cancel()
+        raise exc
     match cast(Any, response.get("type")):
         case "lifespan.startup.complete":
             ...
@@ -61,14 +65,18 @@ async def lifespan(
         if cleaned_up:
             return
         cleaned_up = True
-        send_queue.put_nowait({"type": "lifespan.shutdown"})
         if task.done():
-            raise RuntimeError("Lifespan task errored", task.result())
+            raise RuntimeError("Lifespan task errored", task.exception())
+        send_queue.put_nowait({"type": "lifespan.shutdown"})
 
-        if timeout:
-            response = await wait_for(receive_queue.get(), timeout)
-        else:
-            response = await receive_queue.get()
+        try:
+            if timeout:
+                response = await wait_for(receive_queue.get(), timeout)
+            else:
+                response = await receive_queue.get()
+        except TimeoutError as exc:
+            task.cancel()
+            raise exc
         match response.get("type"):
             case "lifespan.shutdown.complete":
                 ...
