@@ -1,4 +1,4 @@
-from monkay import LifespanProvider
+from monkay.asgi import LifespanProvider
 
 asgi_app = ...
 

@@ -4,7 +4,7 @@ from typing import Any
 
 import pytest
 
-from monkay import LifespanHook, LifespanProvider, lifespan
+from monkay.asgi import LifespanHook, LifespanProvider, lifespan
 
 pytestmark = pytest.mark.anyio
 

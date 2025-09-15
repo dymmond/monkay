@@ -1,6 +1,6 @@
 from contextlib import AsyncExitStack
 
-from monkay import LifespanHook
+from monkay.asgi import LifespanHook
 
 esmerald_app = ...
 django_app = ...

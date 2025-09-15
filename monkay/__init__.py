@@ -1,4 +1,3 @@
-from .asgi import LifespanHook, LifespanProvider, lifespan
 from .base import (
     InGlobalsDict,
     UnsetError,
@@ -13,16 +12,11 @@ from .core import (
 )
 from .types import (
     PRE_ADD_LAZY_IMPORT_HOOK,
-    ASGIApp,
     DeprecatedImport,
     ExtensionProtocol,
 )
 
 __all__ = [
-    "lifespan",
-    "LifespanHook",
-    "LifespanProvider",
-    "ASGIApp",
     "Monkay",
     "DeprecatedImport",
     "PRE_ADD_LAZY_IMPORT_HOOK",

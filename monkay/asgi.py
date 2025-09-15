@@ -254,3 +254,11 @@ def LifespanHook(
     app_wrapper.__getattr__ = lambda name: getattr(app, name)  # type: ignore
 
     return cast(BoundASGIApp, app_wrapper)
+
+
+__all__ = [
+    "lifespan",
+    "LifespanHook",
+    "LifespanProvider",
+    "ASGIApp",
+]

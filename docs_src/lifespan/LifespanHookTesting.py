@@ -2,7 +2,7 @@ from collections.abc import Awaitable, Callable, MutableMapping
 from contextlib import AsyncExitStack
 from typing import Any
 
-from monkay import LifespanHook, lifespan
+from monkay.asgi import LifespanHook, lifespan
 
 
 async def stub_raise(
