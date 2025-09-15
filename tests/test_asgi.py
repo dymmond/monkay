@@ -104,6 +104,8 @@ async def test_lifespan_sniff_started():
             await provider({"type": "lifespan"}, stub_receive, stub_send)
 
 
+# this test can easily hang up in py 3.12
+@pytest.mark.timeout(60)
 async def test_lifespan_started_no_sniff():
     provider = LifespanProvider(LifespanHook(stub, do_forward=False), sniff=False)
     async with lifespan(provider):

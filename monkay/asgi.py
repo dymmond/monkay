@@ -102,7 +102,6 @@ async def _lifespan_task_helper(app: ASGIApp, startup_complete: Event) -> None:
             await bogoevent.wait()
     finally:
         state["started"] = False
-        # cannot clean task here, it must be called from outside
 
 
 @overload
