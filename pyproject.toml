@@ -82,7 +82,7 @@ config-path = "none"
 dependencies = ["ruff==0.11.5"]
 
 [tool.hatch.envs.hatch-test]
-extra-dependencies = ["pydantic_settings", "anyio", "pytest-timeout"]
+extra-dependencies = ["pydantic_settings", "anyio"]
 
 
 [tool.coverage.run]

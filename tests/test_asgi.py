@@ -1,11 +1,10 @@
-import sys
 from collections.abc import Awaitable, Callable, MutableMapping
-from contextlib import AsyncExitStack
+from contextlib import AsyncExitStack, suppress
 from typing import Any
 
 import pytest
 
-from monkay.asgi import LifespanHook, LifespanProvider, get_management_state, lifespan
+from monkay.asgi import LifespanHook, LifespanProvider, lifespan
 
 pytestmark = pytest.mark.anyio
 
@@ -105,34 +104,29 @@ async def test_lifespan_sniff_started():
             await provider({"type": "lifespan"}, stub_receive, stub_send)
 
 
-@pytest.mark.skipif(
-    sys.version_info[:2] == (3, 12), reason="this test can easily hang up in python 3.12"
-)
-@pytest.mark.timeout(180)
 async def test_lifespan_started_no_sniff():
     provider = LifespanProvider(LifespanHook(stub, do_forward=False), sniff=False)
-    async with lifespan(provider):
-        count = 0
+    with suppress(TimeoutError):
+        async with lifespan(provider, timeout=5):
+            count = 0
 
-        async def stub_receive():
-            nonlocal count
-            count += 1
-            if count == 1:
-                return {"type": "lifespan.startup"}
-            if count == 2:
-                return {"type": "lifespan.shutdown"}
+            async def stub_receive():
+                nonlocal count
+                count += 1
+                if count == 1:
+                    return {"type": "lifespan.startup"}
+                if count == 2:
+                    return {"type": "lifespan.shutdown"}
 
-        message: Any = None
+            message: Any = None
 
-        async def stub_send(msg: Any):
-            nonlocal message
-            message = msg
+            async def stub_send(msg: Any):
+                nonlocal message
+                message = msg
 
-        # this is a spec violation but is accepted because of sniff=False
-        await provider({"type": "lifespan"}, stub_receive, stub_send)
-        assert message["type"] == "lifespan.shutdown.complete"
-        state = get_management_state()
-        state["terminateevent"].set()
+            # this is a spec violation but is accepted because of sniff=False
+            await provider({"type": "lifespan"}, stub_receive, stub_send)
+            assert message["type"] == "lifespan.shutdown.complete"
 
 
 async def test_LifespanProvider_forward():

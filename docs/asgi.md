@@ -5,7 +5,8 @@ we have also some ASGI helpers.
 
 ## `lifespan`
 
-Wraps an asgi application as AsyncContextManager and run the lifespan protocol.
+Wraps an asgi application as AsyncContextManager and run the lifespan protocol. You can optionally provide an `timeout` parameter.
+This can be handy for spurious hangups when used for testing.
 
 ```python
 {!> ../docs_src/lifespan/lifespan.py !}

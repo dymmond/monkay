@@ -4,20 +4,14 @@
 # please do no expose this module in monkay.__init__.
 # this module depends on threading.locals and pulls them in.
 
-import sys
 import threading
-from asyncio import AbstractEventLoop, Event, Queue, Task, create_task, get_running_loop
+from asyncio import AbstractEventLoop, Event, Queue, Task, create_task, get_running_loop, wait_for
 from collections.abc import AsyncGenerator, Awaitable, Callable, MutableMapping
 from contextlib import AsyncExitStack, asynccontextmanager, suppress
 from functools import partial, wraps
 from typing import Any, TypedDict, TypeVar, cast, overload
 
 from .types import ASGIApp
-
-if sys.version_info >= (3, 11):
-    from typing import assert_never
-else:
-    from typing_extensions import assert_never
 
 BoundASGIApp = TypeVar("BoundASGIApp", bound=ASGIApp)
 
@@ -26,11 +20,12 @@ class ManagementState(TypedDict):
     started: bool
     loop: AbstractEventLoop | None
     task: Task | None
-    terminateevent: Event | None
 
 
 @asynccontextmanager
-async def lifespan(app: BoundASGIApp) -> AsyncGenerator[BoundASGIApp, None]:
+async def lifespan(
+    app: BoundASGIApp, *, timeout: None | float | int = None
+) -> AsyncGenerator[BoundASGIApp, None]:
     """Transform the ASGI lifespan extension into an AsyncContextManager."""
     # inverted send, receive because we are emulating the server
     send_queue: Queue[MutableMapping[str, Any]] = Queue()
@@ -49,14 +44,15 @@ async def lifespan(app: BoundASGIApp) -> AsyncGenerator[BoundASGIApp, None]:
             receive_queue.put,
         )
     )
-    response = await receive_queue.get()
+    if timeout:
+        response = await wait_for(receive_queue.get(), timeout)
+    else:
+        response = await receive_queue.get()
     match cast(Any, response.get("type")):
         case "lifespan.startup.complete":
             ...
         case "lifespan.startup.failed":
             raise RuntimeError("Lifespan startup failed:", response.get("msg") or "")
-        case _ as invalid:
-            assert_never(invalid)
 
     cleaned_up = False
 
@@ -65,17 +61,19 @@ async def lifespan(app: BoundASGIApp) -> AsyncGenerator[BoundASGIApp, None]:
         if cleaned_up:
             return
         cleaned_up = True
-        await send_queue.put({"type": "lifespan.shutdown"})
+        send_queue.put_nowait({"type": "lifespan.shutdown"})
         if task.done():
             raise RuntimeError("Lifespan task errored", task.result())
-        response = await receive_queue.get()
-        match cast(Any, response.get("type")):
+
+        if timeout:
+            response = await wait_for(receive_queue.get(), timeout)
+        else:
+            response = await receive_queue.get()
+        match response.get("type"):
             case "lifespan.shutdown.complete":
                 ...
             case "lifespan.shutdown.failed":
                 raise RuntimeError("Lifespan shutdown failed:", response.get("msg") or "")
-            case _ as invalid:
-                assert_never(invalid)
 
     try:
         yield app
@@ -89,9 +87,7 @@ lifespan_local = threading.local()
 
 def get_management_state() -> ManagementState:
     if not hasattr(lifespan_local, "management_state"):
-        lifespan_local.management_state = ManagementState(
-            started=False, task=None, terminateevent=None, loop=None
-        )
+        lifespan_local.management_state = ManagementState(started=False, task=None, loop=None)
     return lifespan_local.management_state
 
 
@@ -99,7 +95,6 @@ async def _lifespan_task_helper(app: ASGIApp, startup_complete: Event) -> None:
     terminateevent = Event()
     state = get_management_state()
     try:
-        state["terminateevent"] = terminateevent
         async with lifespan(app):
             startup_complete.set()
             # wait until cancellation
@@ -139,8 +134,6 @@ def LifespanProvider(
             # trigger start
             started = state["started"] = False
             # cancel old loop task
-            if terminateevent := state.get("terminateevent"):
-                terminateevent.set()
             if task_ref := state.get("task"):
                 task_ref.cancel()
         if sniff and scope.get("type") == "lifespan":
@@ -219,7 +212,7 @@ def LifespanHook(
                 # Await the message from the original receive callable.
                 message = await original_receive()
                 # Check if the message type is for lifespan startup.
-                match cast(Any, message.get("type")):
+                match message.get("type"):
                     case "lifespan.startup":
                         if setup is not None:
                             try:
@@ -245,8 +238,6 @@ def LifespanHook(
                                 # Raise a custom exception to stop further lifespan
                                 # processing for this event.
                                 raise MuteInteruptException from None
-                    case _ as invalid:
-                        assert_never(invalid)
                 # Return the original message after processing.
                 return message
 

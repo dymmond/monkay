@@ -31,5 +31,5 @@ async def setup() -> AsyncExitStack:
 
 async def test_asgi_hook():
     hook_to_test = LifespanHook(LifespanHook(stub_raise, do_forward=False), setup=setup)
-    async with lifespan(hook_to_test):
+    async with lifespan(hook_to_test, timeout=30):
         pass
