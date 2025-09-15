@@ -26,6 +26,7 @@ class ManagementState(TypedDict):
     started: bool
     loop: AbstractEventLoop | None
     task: Task | None
+    terminateevent: Event | None
 
 
 @asynccontextmanager
@@ -88,18 +89,21 @@ lifespan_local = threading.local()
 
 def get_management_state() -> ManagementState:
     if not hasattr(lifespan_local, "management_state"):
-        lifespan_local.management_state = ManagementState(started=False, task=None, loop=None)
+        lifespan_local.management_state = ManagementState(
+            started=False, task=None, terminateevent=None, loop=None
+        )
     return lifespan_local.management_state
 
 
 async def _lifespan_task_helper(app: ASGIApp, startup_complete: Event) -> None:
-    bogoevent = Event()
+    terminateevent = Event()
     state = get_management_state()
     try:
+        state["terminateevent"] = terminateevent
         async with lifespan(app):
             startup_complete.set()
             # wait until cancellation
-            await bogoevent.wait()
+            await terminateevent.wait()
     finally:
         state["started"] = False
 
@@ -135,6 +139,8 @@ def LifespanProvider(
             # trigger start
             started = state["started"] = False
             # cancel old loop task
+            if terminateevent := state.get("terminateevent"):
+                terminateevent.set()
             if task_ref := state.get("task"):
                 task_ref.cancel()
         if sniff and scope.get("type") == "lifespan":
