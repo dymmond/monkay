@@ -214,12 +214,11 @@ def LifespanHook(
                 # Await the message from the original receive callable.
                 message = await original_receive()
                 # Check if the message type is for lifespan startup.
-                match message.get("type"):
+                match cast(Any, message.get("type")):
                     case "lifespan.startup":
                         if setup is not None:
                             try:
-                                # Attempt to enter the registry's asynchronous context,
-                                # typically establishing database connections.
+                                # Setup an AsyncExitStack for cleanup.
                                 shutdown_stack = await setup()
                             except Exception as exc:
                                 # If an exception occurs during startup, send a failed
