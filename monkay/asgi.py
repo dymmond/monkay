@@ -82,7 +82,7 @@ async def _lifespan_task_helper(app: ASGIApp, startup_complete: Event) -> None:
             # wait until cancellation
             await bogoevent.wait()
     finally:
-        lifespan_local.active = False
+        lifespan_local.started = False
 
 
 @overload
