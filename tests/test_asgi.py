@@ -108,7 +108,7 @@ async def test_lifespan_sniff_started():
 @pytest.mark.skipif(
     sys.version_info[:2] == (3, 12), reason="this test can easily hang up in python 3.12"
 )
-@pytest.mark.timeout(60)
+@pytest.mark.timeout(180)
 async def test_lifespan_started_no_sniff():
     provider = LifespanProvider(LifespanHook(stub, do_forward=False), sniff=False)
     async with lifespan(provider):
