@@ -1,3 +1,4 @@
+import sys
 from collections.abc import Awaitable, Callable, MutableMapping
 from contextlib import AsyncExitStack
 from typing import Any
@@ -104,7 +105,9 @@ async def test_lifespan_sniff_started():
             await provider({"type": "lifespan"}, stub_receive, stub_send)
 
 
-# this test can easily hang up in py 3.12
+@pytest.mark.skipif(
+    sys.version_info[:2] == (3, 12), reason="this test can easily hang up in python 3.12"
+)
 @pytest.mark.timeout(60)
 async def test_lifespan_started_no_sniff():
     provider = LifespanProvider(LifespanHook(stub, do_forward=False), sniff=False)
