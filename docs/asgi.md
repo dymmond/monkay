@@ -12,7 +12,7 @@ This can be handy for spurious hangups when used for testing.
 {!> ../docs_src/lifespan/lifespan.py !}
 ```
 
-## `LifespanProvider`
+## `LifespanProvider` (Experimental)
 
 For the use with asgi servers which does not implement the lifespan protocol. Here we just hook into the eventloop and bring lifespan to the ASGI app.
 
@@ -21,6 +21,10 @@ When the asgi server supports lifespans, the `LifespanProvider` doesn't inject i
 ```python
 {!> ../docs_src/lifespan/LifespanProvider.py !}
 ```
+
+!!! Warning
+    `LifespanProvider` is experimental. You may can experience hangs. It should however work with one thread per worker.
+    I couldn't rule out hangs in my tests.
 
 ## `LifespanHook`
 
