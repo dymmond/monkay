@@ -77,6 +77,8 @@ async def lifespan(
         except TimeoutError as exc:
             task.cancel()
             raise exc
+        if not task.done():
+            task.cancel()
         match response.get("type"):
             case "lifespan.shutdown.complete":
                 ...
