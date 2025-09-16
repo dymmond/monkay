@@ -1,4 +1,4 @@
-from monkay import LifespanHook
+from monkay.asgi import LifespanHook
 
 django_app = ...
 
