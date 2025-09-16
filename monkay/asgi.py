@@ -13,6 +13,8 @@ BoundASGIApp = TypeVar("BoundASGIApp", bound=ASGIApp)
 
 
 class Lifespan(Generic[BoundASGIApp]):
+    """Implement the lifespan protocol like a server. Takes an ASGI app."""
+
     app: BoundASGIApp
     timeout: float | None
     task: Task | None = None
@@ -23,6 +25,7 @@ class Lifespan(Generic[BoundASGIApp]):
         self.timeout = float(timeout) if timeout else None
 
     async def start_raw(self) -> BoundASGIApp:
+        """Start routine without timeout."""
         if self.task is not None:
             return self.app
         # inverted, we have server view
@@ -51,11 +54,13 @@ class Lifespan(Generic[BoundASGIApp]):
         return self.app
 
     async def __aenter__(self) -> BoundASGIApp:
+        """Start routine with optional timeout."""
         if self.timeout:
             return await wait_for(self.start_raw(), self.timeout)
         return await self.start_raw()
 
     async def shutdown_raw(self) -> None:
+        """Shutdown routine without timeout."""
         task = self.task
         if task is None:
             return
@@ -77,12 +82,14 @@ class Lifespan(Generic[BoundASGIApp]):
         exc_value: BaseException | None = None,
         traceback: TracebackType | None = None,
     ) -> None:
+        """Shutdown routine with optional timeout."""
         if self.timeout:
             await wait_for(self.shutdown_raw(), self.timeout)
         await self.shutdown_raw()
 
 
-class MuteInteruptException(BaseException): ...
+class MuteInteruptException(BaseException):
+    """Silent exception which is handled by LifespanHook."""
 
 
 @overload
@@ -109,7 +116,7 @@ def LifespanHook(
     setup: Callable[[], Awaitable[AsyncExitStack]] | None = None,
     do_forward: bool = True,
 ) -> BoundASGIApp | Callable[[BoundASGIApp], BoundASGIApp]:
-    """Helper for creating a lifespan integration which forwards."""
+    """Helper for creating a library lifespan integration."""
     if app is None:
         return partial(LifespanHook, setup=setup, do_forward=do_forward)
 
@@ -121,6 +128,7 @@ def LifespanHook(
         receive: Callable[[], Awaitable[MutableMapping[str, Any]]],
         send: Callable[[MutableMapping[str, Any]], Awaitable[None]],
     ) -> None:
+        """Wraps the ASGI callable. Provides a forward."""
         nonlocal shutdown_stack
         # Check if the current scope is of type 'lifespan'.
         if scope["type"] == "lifespan":
