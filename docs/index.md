@@ -18,6 +18,7 @@ Some of the key features **Monkay** provides are:
 - **Thread-safety**: Handle multiple threads accessing different parts of the application, ensuring consistency and stability.
 - **Async-friendly testing**: Easily test applications with different settings and environments using **Monkay’s** context variables.
 - **Dynamic settings management**: Overwrite settings temporarily, similar to how Django handles configurations.
+- **Helpers for dynamic execution**: Easily load code or execute lifespans ([ASGI](./asgi.md)).
 
 With **Monkay**, testing becomes a breeze, and managing extensions and settings in dynamic, multithreaded applications is no longer a headache. It simplifies complex setups and allows you to focus on building rather than managing dependencies.
 
@@ -39,13 +40,13 @@ pip install monkay
 
 ### Step 2: Python Version Requirement
 
-**Monkay** requires Python 3.9 or later to function correctly. Ensure that you have the appropriate Python version installed:
+**Monkay** requires Python 3.10 or later to function correctly. Ensure that you have the appropriate Python version installed:
 
 ```shell
 python --version
 ```
 
-If your Python version is below 3.9, you will need to upgrade to a compatible version.
+If your Python version is below 3.10, you will need to upgrade to a compatible version.
 
 ---
 

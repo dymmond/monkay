@@ -272,7 +272,7 @@ class Monkay(
             # load settings one time and before setting settings_evaluated to True
             settings = self.settings
         except Exception as exc:
-            if ignore_import_errors and isinstance(exc, (UnsetError, ImportError, AttributeError)):
+            if ignore_import_errors and isinstance(exc, UnsetError | ImportError | AttributeError):
                 return False
             raise exc
         self._evaluate_settings(

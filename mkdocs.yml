@@ -45,6 +45,7 @@ nav:
   - Specials: specials.md
   - Settings: settings.md
   - Cages: cages.md
+  - ASGI: asgi.md
   - Contributing: contributing.md
   - Sponsorship: sponsorship.md
   - Release Notes: release-notes.md

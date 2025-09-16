@@ -1,35 +1,29 @@
 from __future__ import annotations
 
-import sys
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable, MutableMapping
 from typing import (
     TYPE_CHECKING,
     Any,
     Literal,
     NamedTuple,
     Protocol,
+    TypeAlias,
     TypedDict,
     TypeVar,
-    Union,
     overload,
     runtime_checkable,
 )
-
-if sys.version_info >= (3, 10):
-    from typing import TypeAlias
-else:
-    from typing_extensions import TypeAlias
 
 if TYPE_CHECKING:
     from .core import Monkay
 
 SETTINGS_T = TypeVar("SETTINGS_T")
 
-SETTINGS_DEFINITION_BASE_TYPE: TypeAlias = Union[SETTINGS_T, type[SETTINGS_T], str, None]
-SETTINGS_DEFINITION_TYPE: TypeAlias = Union[
-    SETTINGS_DEFINITION_BASE_TYPE[SETTINGS_T],
-    Callable[[], SETTINGS_DEFINITION_BASE_TYPE[SETTINGS_T]],
-]
+SETTINGS_DEFINITION_BASE_TYPE: TypeAlias = SETTINGS_T | type[SETTINGS_T] | str | None
+SETTINGS_DEFINITION_TYPE: TypeAlias = (
+    SETTINGS_DEFINITION_BASE_TYPE[SETTINGS_T]
+    | Callable[[], SETTINGS_DEFINITION_BASE_TYPE[SETTINGS_T]]
+)
 
 INSTANCE = TypeVar("INSTANCE")
 SETTINGS = TypeVar("SETTINGS")
@@ -121,3 +115,13 @@ class PRE_ADD_LAZY_IMPORT_HOOK(Protocol):
         type_: Literal["lazy_import", "deprecated_lazy_import"],
         /,
     ) -> tuple[str, str | Callable[[], Any] | DeprecatedImport]: ...
+
+
+ASGIApp = Callable[
+    [
+        MutableMapping[str, Any],
+        Callable[[], Awaitable[MutableMapping[str, Any]]],
+        Callable[[MutableMapping[str, Any]], Awaitable[None]],
+    ],
+    Awaitable[None],
+]

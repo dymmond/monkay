@@ -29,9 +29,7 @@ classifiers = [
   "Programming Language :: Python :: Implementation :: PyPy",
   "License :: OSI Approved :: BSD License",
 ]
-dependencies = [
-  'typing_extensions; python_version<"3.10"'
-]
+dependencies = []
 
 [project.urls]
 Documentation = "https://github.com/devkral/monkay#readme"
@@ -82,7 +80,7 @@ config-path = "none"
 dependencies = ["ruff==0.11.5"]
 
 [tool.hatch.envs.hatch-test]
-extra-dependencies = ["pydantic_settings"]
+extra-dependencies = ["pydantic_settings", "anyio", "pytest-timeout"]
 
 
 [tool.coverage.run]
