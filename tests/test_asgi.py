@@ -4,7 +4,7 @@ from typing import Any
 
 import pytest
 
-from monkay.asgi import LifespanHook, LifespanProvider, lifespan
+from monkay.asgi import LifespanHook, LifespanProvider, get_management_state, lifespan
 
 pytestmark = pytest.mark.anyio
 
@@ -102,6 +102,56 @@ async def test_lifespan_sniff_started():
         # try a spec violation
         with pytest.raises(RuntimeError):
             await provider({"type": "lifespan"}, stub_receive, stub_send)
+
+
+async def test_lifespan_started_manually():
+    provider = LifespanProvider(LifespanHook(stub, do_forward=False))
+    count = 0
+
+    async def stub_receive():
+        nonlocal count
+        count += 1
+        if count == 1:
+            return {"type": "lifespan.startup"}
+        if count == 2:
+            return {"type": "lifespan.shutdown"}
+
+    message: Any = None
+
+    async def stub_send(msg: Any):
+        nonlocal message
+        message = msg
+
+    await provider({"type": "lifespan"}, stub_receive, stub_send)
+    assert message["type"] == "lifespan.shutdown.complete"
+
+
+async def test_lifespan_started_response():
+    setup_executed = False
+
+    async def setup():
+        nonlocal setup_executed
+        setup_executed = True
+        return AsyncExitStack()
+
+    provider = LifespanProvider(LifespanHook(stub_empty, setup=setup, do_forward=False))
+
+    async def stub_receive():
+        return {}
+
+    message: Any = None
+
+    async def stub_send(msg: Any):
+        nonlocal message
+        message = msg
+
+    await provider({"type": "http.request"}, stub_receive, stub_send)
+    try:
+        assert setup_executed
+    finally:
+        # prevent hangup
+        state = get_management_state()
+        state["task"].cancel()
 
 
 async def test_LifespanProvider_forward():
