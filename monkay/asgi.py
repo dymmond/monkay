@@ -121,12 +121,14 @@ def LifespanProvider(app: BoundASGIApp) -> BoundASGIApp | Callable[[BoundASGIApp
         started = state["started"]
         rloop = get_running_loop()
         loop = state["loop"]
+        # the old loop is maybe slated for closing, so transfer ownership of task
         if loop and loop is not rloop:
             # trigger start
             started = state["started"] = False
             # cancel old loop task
             if task_ref := state.get("task"):
                 task_ref.cancel()
+            state["task"] = None
         if scope.get("type") == "lifespan":
             # is already started in the same thread
             if started:
