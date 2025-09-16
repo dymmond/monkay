@@ -111,6 +111,6 @@ async def test_lifespan_timeout(phase):
         cm.push_async_callback(helper_cleanup)
         return cm
 
-    with pytest.raises(TimeoutError):
+    with pytest.raises(asyncio.TimeoutError):
         async with Lifespan(LifespanHook(stub, setup=helper_setup, do_forward=False), timeout=0.4):
             pass
