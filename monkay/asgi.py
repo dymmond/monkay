@@ -1,154 +1,85 @@
 """ASGI helpers."""
 
-# Developer warning:
-# please do no expose this module in monkay.__init__.
-# this module depends on threading.locals and pulls them in.
-
-import threading
-from asyncio import AbstractEventLoop, Event, Queue, Task, create_task, get_running_loop, wait_for
-from collections.abc import AsyncGenerator, Awaitable, Callable, MutableMapping
-from contextlib import AsyncExitStack, asynccontextmanager, suppress
+from asyncio import Queue, Task, create_task, wait_for
+from collections.abc import Awaitable, Callable, MutableMapping
+from contextlib import AsyncExitStack, suppress
 from functools import partial, wraps
-from typing import Any, TypedDict, TypeVar, cast, overload
+from types import TracebackType
+from typing import Any, Generic, TypeVar, cast, overload
 
 from .types import ASGIApp
 
 BoundASGIApp = TypeVar("BoundASGIApp", bound=ASGIApp)
 
 
-class ManagementState(TypedDict):
-    started: bool
-    loop: AbstractEventLoop | None
-    task: Task | None
+class Lifespan(Generic[BoundASGIApp]):
+    app: BoundASGIApp
+    timeout: float | None
+    task: Task | None = None
+    state: MutableMapping[str, Any] | None = None
 
+    def __init__(self, app: BoundASGIApp, *, timeout: None | int | float = None) -> None:
+        self.app = app
+        self.timeout = float(timeout) if timeout else None
 
-@asynccontextmanager
-async def lifespan(
-    app: BoundASGIApp, *, timeout: None | int | float = None
-) -> AsyncGenerator[BoundASGIApp, None]:
-    """Transform the ASGI lifespan extension into an AsyncContextManager."""
-    # inverted send, receive because we are emulating the server
-    send_queue: Queue[MutableMapping[str, Any]] = Queue()
-    receive_queue: Queue[MutableMapping[str, Any]] = Queue()
-    state: MutableMapping[str, Any] = {}
-    task: Task
-
-    async def setup():
-        nonlocal task
-        send_queue.put_nowait({"type": "lifespan.startup"})
-        task = create_task(
-            app(  # type: ignore
+    async def start_raw(self) -> BoundASGIApp:
+        if self.task is not None:
+            return self.app
+        # inverted, we have server view
+        self.send_queue: Queue[MutableMapping[str, Any]] = Queue()
+        self.receive_queue: Queue[MutableMapping[str, Any]] = Queue()
+        self.state = {}
+        self.send_queue.put_nowait({"type": "lifespan.startup"})
+        self.task = create_task(
+            self.app(  # type: ignore
                 {
                     "type": "lifespan",
                     "asgi": {"version": "3.0", "spec_version": "2.0"},
-                    "state": state,
+                    "state": self.state,
                 },
                 # inverted send, receive because we are emulating the server
-                send_queue.get,
-                receive_queue.put,
+                self.send_queue.get,
+                self.receive_queue.put,
             )
         )
-        response = await receive_queue.get()
+        response = await self.receive_queue.get()
         match cast(Any, response.get("type")):
             case "lifespan.startup.complete":
                 ...
             case "lifespan.startup.failed":
                 raise RuntimeError("Lifespan startup failed:", response.get("msg") or "")
+        return self.app
 
-    cleaned_up = False
+    async def __aenter__(self) -> BoundASGIApp:
+        if self.timeout:
+            return await wait_for(self.start_raw(), self.timeout)
+        return await self.start_raw()
 
-    async def cleanup() -> None:
-        nonlocal cleaned_up, task
-        if cleaned_up:
+    async def shutdown_raw(self) -> None:
+        task = self.task
+        if task is None:
             return
-        cleaned_up = True
+        self.task = None
         if task.done():
-            raise RuntimeError("Lifespan task errored", task.exception())
-        send_queue.put_nowait({"type": "lifespan.shutdown"})
+            raise RuntimeError("Lifespan task errored:", task.exception())
 
-        response = await receive_queue.get()
+        self.send_queue.put_nowait({"type": "lifespan.shutdown"})
+        response = await self.receive_queue.get()
         match response.get("type"):
             case "lifespan.shutdown.complete":
                 ...
             case "lifespan.shutdown.failed":
                 raise RuntimeError("Lifespan shutdown failed:", response.get("msg") or "")
 
-    if timeout:
-        await wait_for(setup(), timeout)
-    else:
-        await setup()
-    try:
-        yield app
-    finally:
-        if timeout:
-            await wait_for(cleanup(), timeout)
-        else:
-            await cleanup()
-
-
-# why not contextvar? this is really thread local while contextvars can be copied.
-lifespan_local = threading.local()
-
-
-def get_management_state() -> ManagementState:
-    if not hasattr(lifespan_local, "management_state"):
-        lifespan_local.management_state = ManagementState(started=False, task=None, loop=None)
-    return lifespan_local.management_state
-
-
-async def _lifespan_task_helper(app: ASGIApp, startup_complete: Event) -> None:
-    terminateevent = Event()
-    state = get_management_state()
-    try:
-        async with lifespan(app):
-            startup_complete.set()
-            # wait until cancellation
-            await terminateevent.wait()
-    finally:
-        state["started"] = False
-
-
-def LifespanProvider(app: BoundASGIApp) -> BoundASGIApp | Callable[[BoundASGIApp], BoundASGIApp]:
-    """Make lifespan usage possible in servers which doesn't support the extension e.g. daphne."""
-
-    @wraps(app)
-    async def app_wrapper(
-        scope: MutableMapping[str, Any],
-        receive: Callable[[], Awaitable[MutableMapping[str, Any]]],
-        send: Callable[[MutableMapping[str, Any]], Awaitable[None]],
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None = None,
+        exc_value: BaseException | None = None,
+        traceback: TracebackType | None = None,
     ) -> None:
-        state = get_management_state()
-        started = state["started"]
-        rloop = get_running_loop()
-        loop = state["loop"]
-        # the old loop is maybe slated for closing, so transfer ownership of task
-        if loop and loop is not rloop:
-            # trigger start
-            started = state["started"] = False
-            # cancel old loop task
-            if task_ref := state.get("task"):
-                task_ref.cancel()
-            state["task"] = None
-        if scope.get("type") == "lifespan":
-            # is already started in the same thread
-            if started:
-                raise RuntimeError("We should not execute lifespan twice in the same thread.")
-            # prevent start
-            started = state["started"] = True
-        loop = state["loop"] = rloop
-        if not started:
-            # init
-            started = state["started"] = True
-            startup_complete = Event()
-            state["task"] = create_task(_lifespan_task_helper(app, startup_complete))
-            await startup_complete.wait()
-
-        await app(scope, receive, send)
-
-    # forward attributes
-    app_wrapper.__getattr__ = lambda name: getattr(app, name)  # type: ignore
-
-    return cast(BoundASGIApp, app_wrapper)
+        if self.timeout:
+            await wait_for(self.shutdown_raw(), self.timeout)
+        await self.shutdown_raw()
 
 
 class MuteInteruptException(BaseException): ...
@@ -270,8 +201,7 @@ def LifespanHook(
 
 
 __all__ = [
-    "lifespan",
+    "Lifespan",
     "LifespanHook",
-    "LifespanProvider",
     "ASGIApp",
 ]

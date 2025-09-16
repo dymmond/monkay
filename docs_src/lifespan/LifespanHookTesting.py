@@ -2,7 +2,7 @@ from collections.abc import Awaitable, Callable, MutableMapping
 from contextlib import AsyncExitStack
 from typing import Any
 
-from monkay.asgi import LifespanHook, lifespan
+from monkay.asgi import Lifespan, LifespanHook
 
 
 async def stub_raise(
@@ -31,5 +31,5 @@ async def setup() -> AsyncExitStack:
 
 async def test_asgi_hook():
     hook_to_test = LifespanHook(LifespanHook(stub_raise, do_forward=False), setup=setup)
-    async with lifespan(hook_to_test, timeout=30):
+    async with Lifespan(hook_to_test, timeout=30):
         pass

@@ -1,10 +1,10 @@
-from monkay.asgi import lifespan
+from monkay.asgi import Lifespan
 
 asgi_app = ...
 
 
 async def cli_code():
-    async with lifespan(asgi_app) as app:  # noqa: F841
+    async with Lifespan(asgi_app) as app:  # noqa: F841
         # do something
         # e.g. app.list_routes()
         ...

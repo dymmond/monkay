@@ -1,10 +1,11 @@
+import asyncio
 from collections.abc import Awaitable, Callable, MutableMapping
 from contextlib import AsyncExitStack
 from typing import Any
 
 import pytest
 
-from monkay.asgi import LifespanHook, LifespanProvider, get_management_state, lifespan
+from monkay.asgi import Lifespan, LifespanHook
 
 pytestmark = pytest.mark.anyio
 
@@ -53,7 +54,7 @@ async def test_lifespan(probe):
 
     assert not setup_complete
     assert not shutdown_complete
-    async with lifespan(LifespanHook(probe, setup=helper_setup, do_forward=False)):
+    async with Lifespan(LifespanHook(probe, setup=helper_setup, do_forward=False)):
         assert setup_complete
         assert not shutdown_complete
 
@@ -62,7 +63,7 @@ async def test_lifespan(probe):
 
 
 @pytest.mark.parametrize("probe", [stub, stub_empty, stub_raise])
-async def test_lifespan_sniff(probe):
+async def test_lifespan_server(probe):
     setup_complete = False
     shutdown_complete = False
 
@@ -79,86 +80,37 @@ async def test_lifespan_sniff(probe):
 
     assert not setup_complete
     assert not shutdown_complete
-    async with lifespan(
-        # sniff detects the lifespan of the server and doesn't start another lifespan task
-        LifespanProvider(LifespanHook(probe, setup=helper_setup, do_forward=False))
-    ):
+    app = LifespanHook(probe, setup=helper_setup, do_forward=False)
+    wrapped = Lifespan(app)
+    await wrapped.__aenter__()
+    try:
         assert setup_complete
         assert not shutdown_complete
+    finally:
+        await wrapped.__aexit__()
+
     assert setup_complete
     assert shutdown_complete
-
-
-async def test_lifespan_sniff_started():
-    provider = LifespanProvider(LifespanHook(stub, do_forward=False))
-    async with lifespan(provider):
-
-        async def stub_receive():
-            return {}
-
-        async def stub_send(msg: Any):
-            pass
-
-        # try a spec violation
-        with pytest.raises(RuntimeError):
-            await provider({"type": "lifespan"}, stub_receive, stub_send)
-
-
-async def test_lifespan_started_manually():
-    provider = LifespanProvider(LifespanHook(stub, do_forward=False))
-    count = 0
-
-    async def stub_receive():
-        nonlocal count
-        count += 1
-        if count == 1:
-            return {"type": "lifespan.startup"}
-        if count == 2:
-            return {"type": "lifespan.shutdown"}
-
-    message: Any = None
-
-    async def stub_send(msg: Any):
-        nonlocal message
-        message = msg
-
-    await provider({"type": "lifespan"}, stub_receive, stub_send)
-    assert message["type"] == "lifespan.shutdown.complete"
-
-
-async def test_lifespan_started_response():
-    setup_executed = False
-
-    async def setup():
-        nonlocal setup_executed
-        setup_executed = True
-        return AsyncExitStack()
-
-    provider = LifespanProvider(LifespanHook(stub_empty, setup=setup, do_forward=False))
-
-    async def stub_receive():
-        return {}
-
-    message: Any = None
-
-    async def stub_send(msg: Any):
-        nonlocal message
-        message = msg
-
-    await provider({"type": "http.request"}, stub_receive, stub_send)
-    try:
-        assert setup_executed
-    finally:
-        # prevent hangup
-        state = get_management_state()
-        state["task"].cancel()
-
-
-async def test_LifespanProvider_forward():
-    provider = LifespanProvider(stub)
-    assert provider.test_attribute
 
 
 async def test_LifespanHook_forward():
     provider = LifespanHook(stub)
     assert provider.test_attribute
+
+
+@pytest.mark.parametrize("phase", ["startup", "shutdown"])
+async def test_lifespan_timeout(phase):
+    async def helper_cleanup():
+        if phase == "shutdown":
+            await asyncio.sleep(100)
+
+    async def helper_setup():
+        if phase == "startup":
+            await asyncio.sleep(100)
+        cm = AsyncExitStack()
+        cm.push_async_callback(helper_cleanup)
+        return cm
+
+    with pytest.raises(TimeoutError):
+        async with Lifespan(LifespanHook(stub, setup=helper_setup, do_forward=False), timeout=0.4):
+            pass

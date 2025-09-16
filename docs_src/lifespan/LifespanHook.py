@@ -1,9 +1,9 @@
 from contextlib import AsyncExitStack
 
-from monkay.asgi import LifespanHook
+from monkay.asgi import ASGIApp, LifespanHook
 
-esmerald_app = ...
-django_app = ...
+esmerald_app: ASGIApp = ...  #  type: ignore
+django_app: ASGIApp = ...  #  type: ignore
 
 
 async def setup() -> AsyncExitStack:
@@ -25,4 +25,4 @@ async def setup() -> AsyncExitStack:
 # for frameworks supporting lifespan
 app = LifespanHook(esmerald_app, setup=setup)
 # for django or for testing
-# asgi_app = LifespanHook(esmerald_app, setup=setup, do_forward=False)
+# asgi_app = LifespanHook(django_app, setup=setup, do_forward=False)
