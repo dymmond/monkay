@@ -24,44 +24,41 @@ class ManagementState(TypedDict):
 
 @asynccontextmanager
 async def lifespan(
-    app: BoundASGIApp, *, timeout: None | float | int = None
+    app: BoundASGIApp, *, timeout: None | int | float = None
 ) -> AsyncGenerator[BoundASGIApp, None]:
     """Transform the ASGI lifespan extension into an AsyncContextManager."""
     # inverted send, receive because we are emulating the server
     send_queue: Queue[MutableMapping[str, Any]] = Queue()
     receive_queue: Queue[MutableMapping[str, Any]] = Queue()
     state: MutableMapping[str, Any] = {}
-    send_queue.put_nowait({"type": "lifespan.startup"})
-    task: Task = create_task(
-        app(  # type: ignore
-            {
-                "type": "lifespan",
-                "asgi": {"version": "3.0", "spec_version": "2.0"},
-                "state": state,
-            },
-            # inverted send, receive because we are emulating the server
-            send_queue.get,
-            receive_queue.put,
+    task: Task
+
+    async def setup():
+        nonlocal task
+        send_queue.put_nowait({"type": "lifespan.startup"})
+        task = create_task(
+            app(  # type: ignore
+                {
+                    "type": "lifespan",
+                    "asgi": {"version": "3.0", "spec_version": "2.0"},
+                    "state": state,
+                },
+                # inverted send, receive because we are emulating the server
+                send_queue.get,
+                receive_queue.put,
+            )
         )
-    )
-    try:
-        if timeout:
-            response = await wait_for(receive_queue.get(), timeout)
-        else:
-            response = await receive_queue.get()
-    except TimeoutError as exc:
-        task.cancel()
-        raise exc
-    match cast(Any, response.get("type")):
-        case "lifespan.startup.complete":
-            ...
-        case "lifespan.startup.failed":
-            raise RuntimeError("Lifespan startup failed:", response.get("msg") or "")
+        response = await receive_queue.get()
+        match cast(Any, response.get("type")):
+            case "lifespan.startup.complete":
+                ...
+            case "lifespan.startup.failed":
+                raise RuntimeError("Lifespan startup failed:", response.get("msg") or "")
 
     cleaned_up = False
 
     async def cleanup() -> None:
-        nonlocal cleaned_up
+        nonlocal cleaned_up, task
         if cleaned_up:
             return
         cleaned_up = True
@@ -69,26 +66,24 @@ async def lifespan(
             raise RuntimeError("Lifespan task errored", task.exception())
         send_queue.put_nowait({"type": "lifespan.shutdown"})
 
-        try:
-            if timeout:
-                response = await wait_for(receive_queue.get(), timeout)
-            else:
-                response = await receive_queue.get()
-        except TimeoutError as exc:
-            task.cancel()
-            raise exc
-        if not task.done():
-            task.cancel()
+        response = await receive_queue.get()
         match response.get("type"):
             case "lifespan.shutdown.complete":
                 ...
             case "lifespan.shutdown.failed":
                 raise RuntimeError("Lifespan shutdown failed:", response.get("msg") or "")
 
+    if timeout:
+        await wait_for(setup(), timeout)
+    else:
+        await setup()
     try:
         yield app
     finally:
-        await cleanup()
+        if timeout:
+            await wait_for(cleanup(), timeout)
+        else:
+            await cleanup()
 
 
 # why not contextvar? this is really thread local while contextvars can be copied.
@@ -113,22 +108,8 @@ async def _lifespan_task_helper(app: ASGIApp, startup_complete: Event) -> None:
         state["started"] = False
 
 
-@overload
-def LifespanProvider(app: BoundASGIApp, *, sniff: bool = True) -> BoundASGIApp: ...
-
-
-@overload
-def LifespanProvider(
-    app: None, *, sniff: bool = True
-) -> Callable[[BoundASGIApp], BoundASGIApp]: ...
-
-
-def LifespanProvider(
-    app: BoundASGIApp | None = None, *, sniff: bool = True
-) -> BoundASGIApp | Callable[[BoundASGIApp], BoundASGIApp]:
+def LifespanProvider(app: BoundASGIApp) -> BoundASGIApp | Callable[[BoundASGIApp], BoundASGIApp]:
     """Make lifespan usage possible in servers which doesn't support the extension e.g. daphne."""
-    if app is None:
-        return partial(LifespanProvider, sniff=sniff)
 
     @wraps(app)
     async def app_wrapper(
@@ -146,7 +127,7 @@ def LifespanProvider(
             # cancel old loop task
             if task_ref := state.get("task"):
                 task_ref.cancel()
-        if sniff and scope.get("type") == "lifespan":
+        if scope.get("type") == "lifespan":
             # is already started in the same thread
             if started:
                 raise RuntimeError("We should not execute lifespan twice in the same thread.")

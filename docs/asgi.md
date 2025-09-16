@@ -16,8 +16,7 @@ This can be handy for spurious hangups when used for testing.
 
 For the use with asgi servers which does not implement the lifespan protocol. Here we just hook into the eventloop and bring lifespan to the ASGI app.
 
-When the asgi server supports lifespans, the `LifespanProvider` doesn't inject its own lifespan task. However if the autodetection fails,
-it can be disabled with `sniff=False`. This can be helpful when relying on lifespans but supporting servers like daphne.
+When the asgi server supports lifespans, the `LifespanProvider` doesn't inject its own lifespan task. This can be helpful when relying on lifespans but supporting servers like daphne.
 
 ```python
 {!> ../docs_src/lifespan/LifespanProvider.py !}

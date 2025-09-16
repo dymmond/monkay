@@ -1,5 +1,5 @@
 from collections.abc import Awaitable, Callable, MutableMapping
-from contextlib import AsyncExitStack, suppress
+from contextlib import AsyncExitStack
 from typing import Any
 
 import pytest
@@ -102,33 +102,6 @@ async def test_lifespan_sniff_started():
         # try a spec violation
         with pytest.raises(RuntimeError):
             await provider({"type": "lifespan"}, stub_receive, stub_send)
-
-
-@pytest.mark.flaky(reruns=5)
-@pytest.mark.timeout(20)
-async def test_lifespan_started_no_sniff():
-    provider = LifespanProvider(LifespanHook(stub, do_forward=False), sniff=False)
-    with suppress(TimeoutError):
-        async with lifespan(provider, timeout=5):
-            count = 0
-
-            async def stub_receive():
-                nonlocal count
-                count += 1
-                if count == 1:
-                    return {"type": "lifespan.startup"}
-                if count == 2:
-                    return {"type": "lifespan.shutdown"}
-
-            message: Any = None
-
-            async def stub_send(msg: Any):
-                nonlocal message
-                message = msg
-
-            # this is a spec violation but is accepted because of sniff=False
-            await provider({"type": "lifespan"}, stub_receive, stub_send)
-            assert message["type"] == "lifespan.shutdown.complete"
 
 
 async def test_LifespanProvider_forward():
