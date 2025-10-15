@@ -8,6 +8,9 @@ from typing import Generic
 from ._monkay_extensions import MonkayExtensions
 from .types import INSTANCE, SETTINGS
 
+instance_not_enabled_error = """This Monkay instance is not enabled for tracking an arbitary instance.
+To enable it for instances, pass `with_instance=True` as argument."""
+
 
 class MonkayInstance(MonkayExtensions[INSTANCE, SETTINGS], Generic[INSTANCE, SETTINGS]):
     """
@@ -41,7 +44,7 @@ class MonkayInstance(MonkayExtensions[INSTANCE, SETTINGS], Generic[INSTANCE, SET
         Raises:
             AssertionError: If Monkay is not enabled for instances.
         """
-        assert self._instance_var is not None, "Monkay not enabled for instances"
+        assert self._instance_var is not None, instance_not_enabled_error
         instance: INSTANCE | None = self._instance_var.get()
         if instance is None:
             instance = self._instance
@@ -73,7 +76,7 @@ class MonkayInstance(MonkayExtensions[INSTANCE, SETTINGS], Generic[INSTANCE, SET
             AssertionError: If Monkay is not enabled for instances.
             RuntimeError: If another extension application process is already active in the same context.
         """
-        assert self._instance_var is not None, "Monkay not enabled for instances"
+        assert self._instance_var is not None, instance_not_enabled_error
         # need to address before the instance is swapped
         if (
             apply_extensions
@@ -115,7 +118,7 @@ class MonkayInstance(MonkayExtensions[INSTANCE, SETTINGS], Generic[INSTANCE, SET
             AssertionError: If Monkay is not enabled for instances.
             RuntimeError: If another extension application process is already active in the same context.
         """
-        assert self._instance_var is not None, "Monkay not enabled for instances"
+        assert self._instance_var is not None, instance_not_enabled_error
         # need to address before the instance is swapped
         if (
             apply_extensions

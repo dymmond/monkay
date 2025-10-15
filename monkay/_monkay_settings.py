@@ -10,6 +10,9 @@ from typing import Generic, Literal, cast
 from .base import UnsetError, load
 from .types import SETTINGS, SETTINGS_DEFINITION_TYPE, EvaluateSettingsParameters
 
+settings_not_enabled_error = """This Monkay instance is not enabled for settings.
+To enable it for settings, pass for the settings_path argument a value not `None`."""
+
 
 class MonkaySettings(Generic[SETTINGS]):
     """
@@ -61,7 +64,7 @@ class MonkaySettings(Generic[SETTINGS]):
         if isclass(settings_path_or_class):
             return settings_path_or_class()
         assert isinstance(settings_path_or_class, str), (
-            f"Not a settings object: {settings_path_or_class}"
+            f"Not a valid settings object: {settings_path_or_class} ({type(settings_path_or_class)})"
         )
         if not settings_path_or_class:
             return None
@@ -109,7 +112,7 @@ class MonkaySettings(Generic[SETTINGS]):
         Raises:
             AssertionError: If Monkay is not enabled for settings.
         """
-        assert self._settings_var is not None, "Monkay not enabled for settings"
+        assert self._settings_var is not None, settings_not_enabled_error
         _settings_var = self._settings_var.get()
         if _settings_var is None:
             return self._settings_evaluated
@@ -130,7 +133,7 @@ class MonkaySettings(Generic[SETTINGS]):
         Raises:
             AssertionError: If Monkay is not enabled for settings.
         """
-        assert self._settings_var is not None, "Monkay not enabled for settings"
+        assert self._settings_var is not None, settings_not_enabled_error
         _settings_var = self._settings_var.get()
         if _settings_var is None:
             self._settings_evaluated = value
@@ -152,7 +155,7 @@ class MonkaySettings(Generic[SETTINGS]):
             AssertionError: If Monkay is not enabled for settings.
             UnsetError: If settings are not set or the settings function returned None.
         """
-        assert self._settings_var is not None, "Monkay not enabled for settings"
+        assert self._settings_var is not None, settings_not_enabled_error
         _settings_var = self._settings_var.get()
         if _settings_var is not None:
             settings: SETTINGS_DEFINITION_TYPE[SETTINGS] = _settings_var[0][0]
@@ -194,7 +197,7 @@ class MonkaySettings(Generic[SETTINGS]):
         Raises:
             AssertionError: If Monkay is not enabled for settings.
         """
-        assert self._settings_var is not None, "Monkay not enabled for settings"
+        assert self._settings_var is not None, settings_not_enabled_error
         self._settings_evaluated = False
         if value is False or value is None or value == "":
             self._settings_definition = ""
@@ -240,7 +243,7 @@ class MonkaySettings(Generic[SETTINGS]):
         Raises:
             AssertionError: If Monkay is not enabled for settings.
         """
-        assert self._settings_var is not None, "Monkay not enabled for settings"
+        assert self._settings_var is not None, settings_not_enabled_error
         # why None, for temporary using the real settings
         token = self._settings_var.set(
             (["" if settings is False else settings], [False]) if settings is not None else None

@@ -105,6 +105,7 @@ monkay = Monkay(
     globals(),
     with_extensions=True,
     with_instance=True,
+    # ensure that settings_path is not None (which disables settings)
     settings_path=lambda: os.environ.get("MONKAY_SETTINGS", "example.default.path.settings:Settings"),
     settings_preloads_name="preloads",
     settings_extensions_name="extensions",

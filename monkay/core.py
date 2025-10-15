@@ -59,7 +59,7 @@ class Monkay(
         skip_all_update: bool = False,
         skip_getattr_fixup: bool = False,
         evaluate_settings: None = None,
-        ignore_settings_import_errors: bool = True,
+        ignore_settings_import_errors: None = None,
         pre_add_lazy_import_hook: None | PRE_ADD_LAZY_IMPORT_HOOK = None,
         post_add_lazy_import_hook: None | Callable[[str], None] = None,
         ignore_preload_import_errors: bool = True,
@@ -91,7 +91,7 @@ class Monkay(
             skip_all_update: If True, skips updating the `__all__` variable.
             skip_getattr_fixup: If True, skips fixing the missing `__dir__` function.
             evaluate_settings: Deprecated parameter.
-            ignore_settings_import_errors: If True, ignores settings import errors.
+            ignore_settings_import_errors: Deprecated parameter.
             pre_add_lazy_import_hook: A hook to modify lazy import definitions before they are added.
             post_add_lazy_import_hook: A hook to execute after a lazy import is added.
             ignore_preload_import_errors: If True, ignores preload import errors.
@@ -157,6 +157,12 @@ class Monkay(
         if evaluate_settings is not None:
             raise Exception(
                 "This feature and the evaluate_settings parameter are removed in monkay 0.3"
+            )
+        if ignore_settings_import_errors is not None:
+            warnings.warn(
+                "`ignore_settings_import_errors` parameter is defunct and deprecated. It always behave like it would be False.",
+                DeprecationWarning,
+                stacklevel=2,
             )
 
     def clear_caches(self, settings_cache: bool = True, import_cache: bool = True) -> None:
@@ -303,6 +309,7 @@ class Monkay(
         """
         warnings.warn(
             "`evaluate_settings_once` is deprecated. Use `evaluate_settings` instead. It has now the same functionality.",
+            DeprecationWarning,
             stacklevel=2,
         )
         return self.evaluate_settings(
