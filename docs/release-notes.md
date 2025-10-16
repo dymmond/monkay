@@ -9,8 +9,10 @@ hide:
 
 ### Changed
 
-- Assertions include now more documentation.
+- Feature assertions include now more documentation.
+- Importloops cause better error messages.
 - Deprecate the undocumented and defunct `ignore_settings_import_errors` parameter.
+- Consistently raise ImportErrors instead of also raising AttributeErrors in load.
 
 ## 0.5.0
 

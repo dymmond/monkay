@@ -141,7 +141,7 @@ def test_load():
     assert load("tests.targets.fn_module:bar") is not None
     with pytest.raises(ValueError):
         assert load("tests.targets.fn_module.bar", allow_splits=":") is not None
-    with pytest.raises(AttributeError):
+    with pytest.raises(ImportError):
         assert load("tests.targets.fn_module:bar", allow_splits=".") is not None
 
 

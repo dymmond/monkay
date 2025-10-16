@@ -28,7 +28,6 @@ def load(path: str, *, allow_splits: str = ":.", package: None | str = None) -> 
     Raises:
         ValueError: If the path is invalid or cannot be parsed.
         ImportError: If the module cannot be imported.
-        AttributeError: If the object cannot be found in the module.
     """
     splitted = path.rsplit(":", 1) if ":" in allow_splits else []
     if len(splitted) < 2 and "." in allow_splits:
@@ -36,7 +35,16 @@ def load(path: str, *, allow_splits: str = ":.", package: None | str = None) -> 
     if len(splitted) != 2:
         raise ValueError(f"invalid path: {path}")
     module = import_module(splitted[0], package)
-    return getattr(module, splitted[1])
+    try:
+        return getattr(module, splitted[1])
+    except AttributeError as exc:
+        # some implementations may have not this variable, so fallback to False
+        if getattr(module.__spec__, "_initializing", False):
+            raise ImportError(
+                f'Import of "{splitted[1]}" failed, but the module is initializing. '
+                f'You probably have a circular import in "{splitted[0]}".'
+            ) from exc
+        raise ImportError(f'Import of "{splitted[1]}" from "{splitted[0]}" failed.') from exc
 
 
 def load_any(
@@ -81,7 +89,14 @@ def load_any(
             return getattr(module, attr)
         if first_name is None:
             first_name = attr
-    raise ImportError(f"Could not import any of the attributes:.{', '.join(attrs)}")
+
+    # some implementations may have not this variable, so fallback to False
+    if getattr(module.__spec__, "_initializing", False):
+        raise ImportError(
+            f"Could not import any of the attributes:.{', '.join(attrs)}, but the module is initializing. "
+            f'You probably have a circular import in "{path}".'
+        )
+    raise ImportError(f'Could not import any of the attributes:.{", ".join(attrs)} from "{path}".')
 
 
 def absolutify_import(import_path: str, package: str | None) -> str:
@@ -169,14 +184,13 @@ def evaluate_preloads(
 
     Raises:
         ImportError: If a module cannot be imported and `ignore_import_errors` is False.
-        AttributeError: If a specified function cannot be found in a module and `ignore_import_errors` is False.
     """
     no_errors: bool = True
     for preload in preloads:
         splitted = preload.rsplit(":", 1)
         try:
             module = import_module(splitted[0], package)
-        except (ImportError, AttributeError) as exc:
+        except ImportError as exc:
             if not ignore_import_errors:
                 raise exc
             no_errors = False
