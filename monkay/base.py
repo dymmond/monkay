@@ -191,7 +191,7 @@ def evaluate_preloads(
         splitted = preload.rsplit(":", 1)
         try:
             module = import_module(splitted[0], package)
-        except ImportError as exc:  # AttributeErrors are now capsulated behind ImportErrors
+        except ImportError as exc:
             if not ignore_import_errors:
                 raise exc
             no_errors = False
