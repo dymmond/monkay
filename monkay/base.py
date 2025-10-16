@@ -28,7 +28,6 @@ def load(path: str, *, allow_splits: str = ":.", package: None | str = None) -> 
     Raises:
         ValueError: If the path is invalid or cannot be parsed.
         ImportError: If the module cannot be imported.
-        AttributeError: If the object cannot be found in the module.
     """
     splitted = path.rsplit(":", 1) if ":" in allow_splits else []
     if len(splitted) < 2 and "." in allow_splits:
