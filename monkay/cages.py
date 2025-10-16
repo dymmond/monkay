@@ -141,7 +141,7 @@ class Cage(Generic[T]):
                 getattr(module, splitted[1])()
         if obj is Undefined:
             obj = globals_dict[name]
-        assert obj is not Undefined
+        assert obj is not Undefined, "not initialized"
         if not skip_self_register and isinstance(obj, Cage):
             return obj
         context_var_name = context_var_name.format(name=name)

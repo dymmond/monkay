@@ -12,6 +12,10 @@ if TYPE_CHECKING:
     from .core import Monkay
 
 
+extensions_not_enabled_error = """This Monkay instance is not enabled for extensions.
+To enable it for extensions, pass `with_extensions=True` as argument."""
+
+
 class MonkayExtensions(Generic[INSTANCE, SETTINGS]):
     """
     Manages extensions for a Monkay instance, providing functionality to add, apply, and manipulate extensions.
@@ -66,7 +70,7 @@ class MonkayExtensions(Generic[INSTANCE, SETTINGS]):
             AssertionError: If Monkay is not enabled for extensions.
             RuntimeError: If another extension application process is already active in the same context.
         """
-        assert self._extensions_var is not None, "Monkay not enabled for extensions"
+        assert self._extensions_var is not None, extensions_not_enabled_error
         extensions: dict[str, ExtensionProtocol[INSTANCE, SETTINGS]] | None = (
             self._extensions_var.get() if use_overwrite else None
         )
@@ -113,7 +117,7 @@ class MonkayExtensions(Generic[INSTANCE, SETTINGS]):
             RuntimeError: If the provided extension does not implement the ExtensionProtocol,
                           or if the extension does not exist.
         """
-        assert self._extensions_var is not None, "Monkay not enabled for extensions."
+        assert self._extensions_var is not None, extensions_not_enabled_error
         extensions_applied = self._extensions_applied_var.get()
         assert extensions_applied is not None, "Applying extensions not active."
         extensions: dict[str, ExtensionProtocol[INSTANCE, SETTINGS]] | None = (
@@ -168,7 +172,7 @@ class MonkayExtensions(Generic[INSTANCE, SETTINGS]):
             ValueError: If the provided extension is not compatible (does not implement ExtensionProtocol).
             KeyError: If an extension with the same name already exists and `on_conflict` is set to "error".
         """
-        assert self._extensions_var is not None, "Monkay not enabled for extensions"
+        assert self._extensions_var is not None, extensions_not_enabled_error
         extensions: dict[str, ExtensionProtocol[INSTANCE, SETTINGS]] | None = (
             self._extensions_var.get() if use_overwrite else None
         )
@@ -210,7 +214,7 @@ class MonkayExtensions(Generic[INSTANCE, SETTINGS]):
             AssertionError: If Monkay is not enabled for extensions.
         """
         # why None, for temporary using the real extensions
-        assert self._extensions_var is not None, "Monkay not enabled for extensions"
+        assert self._extensions_var is not None, extensions_not_enabled_error
         token = self._extensions_var.set(extensions)
         try:
             if apply_extensions and self.instance is not None:

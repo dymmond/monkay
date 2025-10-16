@@ -5,6 +5,13 @@ hide:
 
 # Release notes
 
+## 0.5.1
+
+### Changed
+
+- Assertions include now more documentation.
+- Deprecate the undocumented and defunct `ignore_settings_import_errors` parameter.
+
 ## 0.5.0
 
 ### Added
