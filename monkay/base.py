@@ -185,14 +185,13 @@ def evaluate_preloads(
 
     Raises:
         ImportError: If a module cannot be imported and `ignore_import_errors` is False.
-        AttributeError: If a specified function cannot be found in a module and `ignore_import_errors` is False.
     """
     no_errors: bool = True
     for preload in preloads:
         splitted = preload.rsplit(":", 1)
         try:
             module = import_module(splitted[0], package)
-        except (ImportError, AttributeError) as exc:
+        except ImportError as exc:  # AttributeErrors are now capsulated behind ImportErrors
             if not ignore_import_errors:
                 raise exc
             no_errors = False
