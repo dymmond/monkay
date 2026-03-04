@@ -1,8 +1,3 @@
----
-hide:
-  - navigation
----
-
 # Settings
 
 ## Forwarding Settings
@@ -18,13 +13,15 @@ settings object.
 ### Example: Child Package
 
 ```python
-{!> ../docs_src/settings/forwarding_child.py !}
+
+{!> ../../../../docs_src/settings/forwarding_child.py !}
 ```
 
 ### Example: Main Package
 
 ```python
-{!> ../docs_src/settings/forwarding_main.py !}
+
+{!> ../../../../docs_src/settings/forwarding_main.py !}
 ```
 
 With this setup, the child package will use the settings from the main package, ensuring that all configurations
@@ -40,7 +37,8 @@ evaluation of settings until later in the application lifecycle.
 ### Example:
 
 ```python
-{!> ../docs_src/settings/lazy_loader.py !}
+
+{!> ../../../../docs_src/settings/lazy_loader.py !}
 ```
 
 This approach allows for flexible configuration of the application, based on the environment, while deferring the
@@ -57,7 +55,8 @@ and handle errors more gracefully.
 ### Example:
 
 ```python
-{!> ../docs_src/settings/multi_stage.py !}
+
+{!> ../../../../docs_src/settings/multi_stage.py !}
 ```
 
 In this example, **Monkay** tries to evaluate settings from both `a.settings` and `b.settings.develop`, ignoring
@@ -118,7 +117,8 @@ Sometimes, you may need to forward old settings to the **Monkay** settings. Whil
 creating a forwarder is easy. Here's an example:
 
 ```python
-{!> ../docs_src/settings/forwarder.py !}
+
+{!> ../../../../docs_src/settings/forwarder.py !}
 ```
 
 ### Note:

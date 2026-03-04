@@ -86,7 +86,7 @@ class MonkayExtensions(Generic[INSTANCE, SETTINGS]):
         if self.extension_order_key_fn is not None:
             extensions_ordered = sorted(
                 extensions_ordered,
-                key=self.extension_order_key_fn,  # type:  ignore
+                key=lambda entry: self.extension_order_key_fn(entry[1]),
             )
         extensions_applied = set()
         token = self._extensions_applied_var.set(extensions_applied)

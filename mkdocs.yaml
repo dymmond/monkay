@@ -1,0 +1,120 @@
+site_name: Monkay
+site_description: The ultimate preload, settings and lazy import manager
+site_url: https://monkay.dymmond.com
+docs_dir: docs/generated
+site_dir: site
+theme:
+  name: material
+  language: en
+  palette:
+    - scheme: default
+      primary: light green
+      accent: red
+      media: "(prefers-color-scheme: light)"
+      toggle:
+        icon: material/lightbulb
+        name: Switch to dark mode
+    - scheme: slate
+      media: "(prefers-color-scheme: dark)"
+      primary: green
+      accent: red
+      toggle:
+        icon: material/lightbulb-outline
+        name: Switch to light mode
+  features:
+    - search.suggest
+    - search.highlight
+    - content.tabs.link
+    - content.code.copy
+    - content.code.annotate
+    - content.tooltips
+    - content.code.select
+    - navigation.indexes
+    - navigation.path
+repo_name: dymmond/monkay
+repo_url: https://github.com/dymmond/monkay
+edit_uri: ""
+extra_css:
+  - stylesheets/extra.css
+plugins:
+  - search
+  - meta-descriptions:
+      export_csv: false
+      quiet: false
+      enable_checks: false
+      min_length: 50
+      max_length: 160
+      trim: false
+  - mkdocstrings:
+      handlers:
+        python:
+          options:
+            extensions:
+              - griffe_typingdoc
+            show_root_heading: true
+            show_if_no_docstring: true
+            inherited_members: true
+            members_order: source
+            separate_signature: true
+            signature_crossrefs: true
+            show_symbol_type_heading: true
+            show_symbol_type_toc: true
+            filters:
+              - "!^_"
+nav:
+  - index.md
+  - Getting Started:
+      - getting-started/index.md
+      - getting-started/install-and-first-module.md
+      - getting-started/first-production-run.md
+  - Concepts:
+      - concepts/index.md
+      - concepts/module-lifecycle.md
+      - concepts/settings-and-extensions.md
+      - concepts/context-cages.md
+  - How-to Guides:
+      - guides/index.md
+      - guides/lazy-imports-and-deprecations.md
+      - guides/testing-with-overrides.md
+      - guides/asgi-lifespan-integration.md
+  - Reference:
+      - reference/index.md
+      - reference/tutorial.md
+      - reference/helpers.md
+      - reference/settings.md
+      - reference/cages.md
+      - reference/asgi.md
+      - reference/specials.md
+      - reference/testing.md
+      - reference/api.md
+  - Project:
+      - project/contributing.md
+      - project/release-notes.md
+      - project/sponsorship.md
+
+markdown_extensions:
+  - attr_list
+  - toc:
+      permalink: true
+  - admonition
+  - extra
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.inlinehilite
+  - pymdownx.highlight:
+      use_pygments: true
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - md_in_html
+
+extra:
+  social:
+    - icon: fontawesome/brands/github-alt
+      link: https://github.com/dymmond/monkay
+    - icon: fontawesome/brands/discord
+      link: https://discord.gg/XVeWXSrJ

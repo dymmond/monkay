@@ -1,0 +1,86 @@
+version: 3
+
+tasks:
+  activate:
+    desc: Activates the development shell
+    cmds:
+      - hatch shell
+
+  clean:
+    desc: Cleans pyc, pyi and pycache files
+    cmds:
+      - hatch run clean_pyc
+      - hatch run clean_pyi
+      - hatch run clean_pycache
+
+  lint:
+    desc: Runs ruff checks
+    cmds:
+      - hatch run lint
+
+  format:
+    desc: Formats code with ruff and validates lint status
+    cmds:
+      - hatch run format
+
+  ty:
+    desc: Runs ty type checker
+    cmds:
+      - hatch run check_types
+
+  typecheck:
+    desc: Runs ty against the Monkay package
+    cmds:
+      - hatch run check_types
+
+  test:
+    desc: Runs test suite
+    cmds:
+      - hatch test {{ .ARGS }}
+
+  coverage:
+    desc: Runs tests with coverage reporting
+    cmds:
+      - hatch test --cover {{ .ARGS }}
+
+  docs_prepare:
+    desc: Prepares docs tree for Zensical
+    cmds:
+      - hatch run docs:prepare
+
+  docs_clean:
+    desc: Cleans generated docs artifacts
+    cmds:
+      - hatch run docs:clean
+
+  docs_build:
+    desc: Builds docs with Zensical
+    cmds:
+      - hatch run docs:build
+
+  build:
+    desc: Builds docs with Zensical (Lilya-style alias)
+    cmds:
+      - hatch run docs:build
+
+  docs_serve:
+    desc: Serves docs with Zensical
+    cmds:
+      - hatch run docs:serve
+
+  serve:
+    desc: Serves docs with Zensical (Lilya-style alias)
+    cmds:
+      - hatch run docs:serve
+
+  serve_dev:
+    desc: Serves docs in development mode (Lilya-style alias)
+    cmds:
+      - hatch run docs:dev
+
+  release_checks:
+    desc: Runs lint + typecheck + tests
+    cmds:
+      - task: lint
+      - task: typecheck
+      - task: test

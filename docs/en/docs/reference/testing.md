@@ -1,8 +1,3 @@
----
-hide:
-  - navigation
----
-
 # Testing
 
 **Monkay** provides several utilities to facilitate testing, especially when dealing with temporary overwrites, lazy imports, and checking imports and exports.

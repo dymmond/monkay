@@ -34,7 +34,7 @@ pip install monkay
 
 ### Step 2: Python Version Requirement
 
-**Monkay** requires Python 3.9 or later to function correctly. Ensure that you have the appropriate Python version installed:
+**Monkay** requires Python 3.10 or later to function correctly. Ensure that you have the appropriate Python version installed:
 
 ```shell
 python --version
@@ -59,3 +59,20 @@ So, while it may look like a typo, it's entirely intentional—and a bit of fun 
 ## Links
 
 [Documentation](https://monkay.dymmond.com)
+
+## Development Quickstart
+
+Monkay uses `hatch`, `ruff`, and `ty`.
+
+```shell
+pip install hatch
+hatch run lint
+hatch run check_types
+hatch test
+```
+
+If you use [Task](https://taskfile.dev), Monkay also ships a `Taskfile.yaml`:
+
+```shell
+task release_checks
+```

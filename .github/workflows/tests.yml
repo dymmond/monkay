@@ -42,9 +42,8 @@ jobs:
           pip install hatch
           scripts/install
       - name: "Run linting"
-        if: steps.filters.outputs.src == 'true' || steps.filters.outputs.workflows == 'true'
-        run: "hatch fmt"
-      - name: "Run mypy"
-        run: "hatch run types:check"
+        run: "hatch run lint"
+      - name: "Run type checks"
+        run: "hatch run check_types"
       - name: "Run tests"
         run: "hatch test"
