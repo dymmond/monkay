@@ -36,12 +36,30 @@ Documentation = "https://github.com/devkral/monkay#readme"
 Issues = "https://github.com/devkral/monkay/issues"
 Source = "https://github.com/devkral/monkay"
 
+[project.optional-dependencies]
+testing = [
+  "anyio",
+  "pytest>=7.0.0,<10.0.0",
+  "pytest-timeout",
+  "pydantic_settings",
+  "ruff>=0.3.0,<5.0.0",
+  "ty",
+]
+docs = [
+  "zensical>=0.0.23,<0.1.0",
+  "mkdocs-meta-descriptions-plugin>=2.3.0",
+  "mkdocstrings>=0.28.3",
+  "mkdocstrings-python>=1.16.12",
+  "griffe-typingdoc>=0.2.2,<1.0",
+]
+
 [tool.hatch.version]
 path = "monkay/__about__.py"
 
 [tool.hatch.envs.default]
 dependencies = [
   "mypy==1.15.0",
+  "ty",
   "ruff>=0.3.0,<5.0.0",
   "pre-commit>=3.3.1,<4.0.0",
   "devtools>=0.12.2",
@@ -49,25 +67,33 @@ dependencies = [
   "ptpython",
   "twine",
   "pydantic_settings",
-  "pre-commit",
 ]
 
 [tool.hatch.envs.docs]
 dependencies = [
-  "mkdocs",
-  "mkdocs-material>=9.4.4,<10.0.0",
-  "mdx-include>=1.4.2,<2.0.0",
+  "zensical>=0.0.23,<0.1.0",
+  "mkdocs-meta-descriptions-plugin>=2.3.0",
+  "mkdocstrings>=0.28.3",
+  "mkdocstrings-python>=1.16.12",
+  "griffe-typingdoc>=0.2.2,<1.0",
 ]
 [tool.hatch.envs.docs.scripts]
-build = "mkdocs build"
-serve = "mkdocs serve --dev-addr localhost:8000"
+prepare = "python scripts/docs.py prepare"
+clean = "python scripts/docs.py clean"
+build = "python scripts/docs.py build --clean"
+serve = "python scripts/docs.py serve"
+dev = "python scripts/docs.py serve"
+verify = "python scripts/verify_docs_src.py"
 
 [tool.hatch.envs.default.scripts]
 clean_pyc = "find . -type f -name \"*.pyc\" -delete"
 clean_pyi = "find . -type f -name \"*.pyi\" -delete"
 clean_pycache = "find . -type d -name \"*__pycache__*\" -delete"
 build_with_check = "hatch build; twine check dist/*"
-lint = "ruff check --fix --line-length 99  monkay tests {args}"
+lint = "ruff check --line-length 99 monkay tests scripts {args}"
+format = "ruff format monkay tests scripts && ruff check --fix --line-length 99 monkay tests scripts {args}"
+check_types = "ty check --error-on-warning monkay"
+quality = "hatch run lint && hatch run check_types"
 
 [tool.hatch.envs.types]
 extra-dependencies = ["mypy>=1.0.0"]
@@ -80,7 +106,7 @@ config-path = "none"
 dependencies = ["ruff==0.14.0"]
 
 [tool.hatch.envs.hatch-test]
-extra-dependencies = ["pydantic_settings", "anyio", "pytest-timeout"]
+extra-dependencies = ["pydantic_settings", "anyio", "pytest-timeout", "ty"]
 
 
 [tool.coverage.run]
@@ -99,15 +125,44 @@ exclude_lines = ["no cov", "if __name__ == .__main__.:", "if TYPE_CHECKING:"]
 [tool.ruff]
 line-length = 99
 fix = true
+exclude = ["docs_src/", "docs/generated/"]
 
 [tool.ruff.lint]
-select = ["E", "W", "F", "C", "B", "I", "UP", "SIM"]
+select = ["E", "W", "F", "C", "B", "I", "UP", "SIM", "FA"]
 ignore = ["E501", "B008", "C901", "B026", "SIM115", "W505"]
 
 
 [tool.ruff.lint.pycodestyle]
 max-line-length = 99
 max-doc-length = 120
+
+[tool.ruff.lint.isort]
+combine-as-imports = true
+
+[tool.ty]
+
+[tool.ty.src]
+exclude = ["tests/*"]
+
+[tool.ty.terminal]
+error-on-warning = true
+
+[tool.ty.rules]
+unused-type-ignore-comment = "ignore"
+possibly-missing-attribute = "ignore"
+unresolved-attribute = "ignore"
+call-top-callable = "ignore"
+call-non-callable = "ignore"
+invalid-return-type = "ignore"
+invalid-assignment = "ignore"
+invalid-argument-type = "ignore"
+unknown-argument = "ignore"
+redundant-cast = "ignore"
+
+[tool.pytest.ini_options]
+addopts = ["--strict-config", "--strict-markers"]
+xfail_strict = true
+junit_family = "xunit2"
 
 [[tool.mypy.overrides]]
 module = "tests.*"

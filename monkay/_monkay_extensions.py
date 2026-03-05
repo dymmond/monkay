@@ -6,6 +6,7 @@ from contextvars import ContextVar
 from inspect import isclass
 from typing import TYPE_CHECKING, Any, Generic, Literal, cast
 
+from ._validation import validate_conflict_mode
 from .types import INSTANCE, SETTINGS, ExtensionProtocol
 
 if TYPE_CHECKING:
@@ -86,7 +87,7 @@ class MonkayExtensions(Generic[INSTANCE, SETTINGS]):
         if self.extension_order_key_fn is not None:
             extensions_ordered = sorted(
                 extensions_ordered,
-                key=self.extension_order_key_fn,  # type:  ignore
+                key=lambda entry: self.extension_order_key_fn(entry[1]),
             )
         extensions_applied = set()
         token = self._extensions_applied_var.set(extensions_applied)
@@ -153,26 +154,43 @@ class MonkayExtensions(Generic[INSTANCE, SETTINGS]):
         use_overwrite: bool = True,
         on_conflict: Literal["error", "keep", "replace"] = "error",
     ) -> None:
-        """
-        Adds a new extension to the Monkay instance.
+        """Register an extension on the active extension registry.
 
-        This method allows adding an extension, either as an instance, a class, or a callable that returns an instance.
-        It handles conflicts based on the `on_conflict` parameter.
+        The method accepts an already-instantiated extension, an extension class,
+        or a zero-argument factory. The input is normalized to an extension
+        instance and then inserted into the currently active registry (context
+        override or base registry).
+
+        Conflict handling is explicit and validated at runtime:
+        ``"error"`` raises, ``"keep"`` preserves the existing extension,
+        and ``"replace"`` overwrites the existing one.
 
         Args:
-            extension: The extension to add, which can be an instance, a class, or a callable.
-            use_overwrite: If True, uses the extensions from the `_extensions_var` if available; otherwise, uses the default `_extensions`.
-            on_conflict: Specifies how to handle conflicts when an extension with the same name already exists.
-                         - "error": Raises a KeyError if a conflict occurs.
-                         - "keep": Keeps the existing extension and ignores the new one.
-                         - "replace": Replaces the existing extension with the new one.
+            extension: Extension instance, extension class, or factory callable.
+            use_overwrite: Use the active ``with_extensions`` override registry
+                when available. If ``False``, always target the base registry.
+            on_conflict: Strategy used when an extension with the same name is
+                already present. Supported values are ``"error"``,
+                ``"keep"``, and ``"replace"``.
 
         Raises:
-            AssertionError: If Monkay is not enabled for extensions.
-            ValueError: If the provided extension is not compatible (does not implement ExtensionProtocol).
-            KeyError: If an extension with the same name already exists and `on_conflict` is set to "error".
+            AssertionError: If extensions support is not enabled.
+            ValueError: If ``extension`` is incompatible with
+                :class:`~monkay.types.ExtensionProtocol` or if ``on_conflict`` is
+                not supported.
+            KeyError: If the extension name already exists and ``on_conflict`` is
+                ``"error"``.
+
+        Examples:
+            >>> monkay.add_extension(MyExtension())
+            >>> monkay.add_extension(MyExtension, on_conflict="replace")
+
+        Notes:
+            ``on_conflict`` is validated even when no name collision happens.
+            This keeps behavior deterministic across input data sets.
         """
         assert self._extensions_var is not None, extensions_not_enabled_error
+        on_conflict = validate_conflict_mode(on_conflict)
         extensions: dict[str, ExtensionProtocol[INSTANCE, SETTINGS]] | None = (
             self._extensions_var.get() if use_overwrite else None
         )

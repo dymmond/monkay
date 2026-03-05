@@ -1,0 +1,103 @@
+version: "3"
+
+tasks:
+  activate:
+    desc: Activate a Hatch-managed development shell.
+    cmds:
+      - hatch shell
+
+  clean:
+    desc: Remove Python caches and generated docs artifacts.
+    cmds:
+      - hatch run clean_pyc
+      - hatch run clean_pyi
+      - hatch run clean_pycache
+      - hatch run docs:clean
+
+  lint:
+    desc: Run Ruff lint checks.
+    cmds:
+      - hatch run lint
+
+  format:
+    desc: Format and auto-fix with Ruff.
+    cmds:
+      - hatch run format
+
+  ty:
+    desc: Run ty type checking (legacy alias).
+    cmds:
+      - task: typecheck
+
+  typecheck:
+    desc: Run ty type checks.
+    cmds:
+      - hatch run check_types
+
+  test:
+    desc: Run test suite.
+    cmds:
+      - hatch test {{ .ARGS }}
+
+  coverage:
+    desc: Run tests with coverage output.
+    cmds:
+      - hatch test --cover {{ .ARGS }}
+
+  docs:
+    desc: Build documentation site.
+    cmds:
+      - hatch run docs:build
+
+  "docs:serve":
+    desc: Serve documentation with live refresh.
+    cmds:
+      - hatch run docs:serve
+
+  check:
+    desc: Run CI-grade local checks (lint + typecheck + tests).
+    cmds:
+      - task: lint
+      - task: typecheck
+      - task: test
+
+  # Compatibility aliases for existing workflows
+  docs_prepare:
+    desc: Prepare docs source expansion.
+    cmds:
+      - hatch run docs:prepare
+
+  docs_clean:
+    desc: Clean docs artifacts only.
+    cmds:
+      - hatch run docs:clean
+
+  docs_build:
+    desc: Build docs (legacy alias).
+    cmds:
+      - task: docs
+
+  docs_serve:
+    desc: Serve docs (legacy alias).
+    cmds:
+      - task: "docs:serve"
+
+  build:
+    desc: Build docs (legacy alias).
+    cmds:
+      - task: docs
+
+  serve:
+    desc: Serve docs (legacy alias).
+    cmds:
+      - task: "docs:serve"
+
+  serve_dev:
+    desc: Serve docs in development mode.
+    cmds:
+      - hatch run docs:dev
+
+  release_checks:
+    desc: Run full quality checks (legacy alias).
+    cmds:
+      - task: check

@@ -14,6 +14,7 @@ from typing import (
 from ._monkay_exports import MonkayExports
 from ._monkay_instance import MonkayInstance
 from ._monkay_settings import MonkaySettings
+from ._validation import validate_conflict_mode
 from .base import Undefined, UnsetError, evaluate_preloads, get_value_from_settings
 from .types import (
     INSTANCE,
@@ -252,20 +253,47 @@ class Monkay(
         ignore_preload_import_errors: bool = True,
         onetime: bool = True,
     ) -> bool:
-        """
-        Evaluates settings preloads and extensions.
+        """Evaluate settings-driven preloads and extension registrations.
 
-        This method evaluates the preloads and extensions specified in the settings object.
+        This method is the main runtime entry point for applying configuration
+        declared in ``settings_preloads_name`` and ``settings_extensions_name``.
+        It can be called repeatedly; with ``onetime=True`` it becomes idempotent
+        per context once evaluation succeeded.
 
         Args:
-            on_conflict: Specifies how to handle conflicts when adding extensions.
-            ignore_import_errors: If True, ignores settings import errors.
-            ignore_preload_import_errors: If True, ignores preload import errors.
-            onetime: If True, evaluates settings only once.
+            on_conflict: Conflict policy applied while registering extensions from
+                settings. Supported values are ``"error"``, ``"keep"``, and
+                ``"replace"``.
+            ignore_import_errors: Return ``False`` instead of raising when loading
+                settings fails with :class:`ImportError` or
+                :class:`~monkay.base.UnsetError`.
+            ignore_preload_import_errors: Continue when a settings preload import
+                fails.
+            onetime: Skip re-evaluation if settings were already evaluated in the
+                active context.
 
         Returns:
-            True if settings were successfully evaluated, False otherwise.
+            ``True`` when evaluation completed or was skipped due to ``onetime``.
+            ``False`` only when ``ignore_import_errors=True`` and settings loading
+            failed with an import/unset error.
+
+        Raises:
+            ValueError: If ``on_conflict`` is not one of the supported values.
+            Exception: Any exception raised while loading settings or applying
+                preloads/extensions when not suppressed.
+
+        Examples:
+            >>> monkay.evaluate_settings()
+            True
+            >>> monkay.evaluate_settings(on_conflict="replace", onetime=False)
+            True
+
+        Notes:
+            When neither ``settings_preloads_name`` nor ``settings_extensions_name``
+            is configured, this method marks settings as evaluated without touching
+            ``monkay.settings``.
         """
+        on_conflict = validate_conflict_mode(on_conflict)
         initial_settings_evaluated = self.settings_evaluated
         if onetime and initial_settings_evaluated:
             return True

@@ -5,10 +5,11 @@ from collections.abc import Callable, Generator, Iterable
 from contextlib import AbstractContextManager, contextmanager, nullcontext
 from contextvars import ContextVar, Token
 from functools import wraps
-from importlib import import_module
 from inspect import ismethoddescriptor
 from threading import Lock
 from typing import Any, Generic, TypeVar, cast
+
+from .base import evaluate_preloads
 
 
 class Undefined: ...
@@ -131,14 +132,7 @@ class Cage(Generic[T]):
         if package == "" and globals_dict.get("__spec__"):
             package = globals_dict["__spec__"].parent
         package = package or None
-        for preload in preloads:
-            splitted = preload.rsplit(":", 1)
-            try:
-                module = import_module(splitted[0], package)
-            except ImportError:
-                module = None
-            if module is not None and len(splitted) == 2:
-                getattr(module, splitted[1])()
+        evaluate_preloads(preloads, ignore_import_errors=True, package=package)
         if obj is Undefined:
             obj = globals_dict[name]
         assert obj is not Undefined, "not initialized"

@@ -190,6 +190,8 @@ def test_extensions(capsys):
         mod.monkay.add_extension(NonExtension(name="foo"))  # type: ignore
     with pytest.raises(KeyError):
         mod.monkay.add_extension(Extension(name="settings_extension1"))
+    with pytest.raises(ValueError, match='Invalid on_conflict: "warn"'):
+        mod.monkay.add_extension(Extension(name="settings_extension1"), on_conflict="warn")  # type: ignore[arg-type]
     assert capsys.readouterr().out == ""
 
     # order

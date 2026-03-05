@@ -1,6 +1,14 @@
-"""ASGI helpers."""
+"""ASGI lifecycle utilities and compatibility helpers.
 
-from asyncio import Queue, Task, create_task, wait_for
+This module provides two production-oriented helpers:
+
+1. :class:`Lifespan`, a tiny in-process ASGI server-side lifespan driver that
+   can be used from tests or integration harnesses.
+2. :func:`LifespanHook`, an adapter that helps applications integrate custom
+   startup/shutdown setup logic without forcing framework-specific coupling.
+"""
+
+from asyncio import CancelledError, Queue, Task, create_task, wait_for
 from collections.abc import Awaitable, Callable, MutableMapping
 from contextlib import AsyncExitStack, suppress
 from functools import partial, wraps
@@ -13,7 +21,22 @@ BoundASGIApp = TypeVar("BoundASGIApp", bound=ASGIApp)
 
 
 class Lifespan(Generic[BoundASGIApp]):
-    """Implement the lifespan protocol like a server. Takes an ASGI app."""
+    """Drive the ASGI lifespan protocol as an in-process server harness.
+
+    The instance emulates a minimal server-side lifespan loop:
+    it sends ``lifespan.startup`` and ``lifespan.shutdown`` messages to an ASGI
+    application and consumes responses from the app.
+
+    The class is intentionally lightweight and fully async, so it can be used
+    in tests and orchestration code that needs deterministic startup/shutdown
+    boundaries.
+
+    Args:
+        app: ASGI application callable supporting the lifespan protocol.
+        timeout: Optional timeout applied by ``__aenter__``/``__aexit__``.
+            When provided, startup and shutdown are wrapped in
+            :func:`asyncio.wait_for`.
+    """
 
     app: BoundASGIApp
     timeout: float | None
@@ -21,11 +44,44 @@ class Lifespan(Generic[BoundASGIApp]):
     state: MutableMapping[str, Any] | None = None
 
     def __init__(self, app: BoundASGIApp, *, timeout: None | int | float = None) -> None:
+        """Initialize a lifespan driver.
+
+        Args:
+            app: ASGI application callable.
+            timeout: Optional timeout in seconds for context-manager entry/exit.
+        """
         self.app = app
         self.timeout = float(timeout) if timeout else None
 
+    async def _cancel_lifespan_task(self) -> None:
+        """Cancel and clear the internal lifespan task.
+
+        This helper guarantees that ``self.task`` is reset to ``None`` even when
+        task cancellation/cleanup raises.
+        """
+        task = self.task
+        self.task = None
+        if task is None:
+            return
+        if task.done():
+            with suppress(CancelledError, Exception):
+                task.result()
+            return
+        task.cancel()
+        with suppress(CancelledError):
+            await task
+
     async def start_raw(self) -> BoundASGIApp:
-        """Start routine without timeout."""
+        """Run lifespan startup without applying timeout policy.
+
+        Returns:
+            The wrapped ASGI application for convenience/chaining.
+
+        Raises:
+            RuntimeError: If startup fails or returns an unexpected message.
+            BaseException: Re-raises startup cancellation/errors after ensuring
+                spawned lifespan task cleanup.
+        """
         if self.task is not None:
             return self.app
         # inverted, we have server view
@@ -45,36 +101,68 @@ class Lifespan(Generic[BoundASGIApp]):
                 self.receive_queue.put,
             )
         )
-        response = await self.receive_queue.get()
-        match cast(Any, response.get("type")):
-            case "lifespan.startup.complete":
-                ...
-            case "lifespan.startup.failed":
-                raise RuntimeError("Lifespan startup failed:", response.get("msg") or "")
-        return self.app
+        try:
+            response = await self.receive_queue.get()
+            match cast(Any, response.get("type")):
+                case "lifespan.startup.complete":
+                    return self.app
+                case "lifespan.startup.failed":
+                    raise RuntimeError("Lifespan startup failed:", response.get("msg") or "")
+                case _:
+                    raise RuntimeError("Lifespan startup failed: Unexpected startup response.")
+        except BaseException:
+            await self._cancel_lifespan_task()
+            raise
 
     async def __aenter__(self) -> BoundASGIApp:
-        """Start routine with optional timeout."""
+        """Enter context and trigger ASGI startup.
+
+        Returns:
+            The wrapped ASGI application.
+
+        Raises:
+            TimeoutError: If startup exceeds configured ``timeout``.
+            RuntimeError: If startup fails.
+        """
         if self.timeout:
             return await wait_for(self.start_raw(), self.timeout)
         return await self.start_raw()
 
     async def shutdown_raw(self) -> None:
-        """Shutdown routine without timeout."""
+        """Run lifespan shutdown without applying timeout policy.
+
+        Raises:
+            RuntimeError: If the app reports shutdown failure or if the lifespan
+                task crashes during shutdown.
+        """
         task = self.task
         if task is None:
             return
         self.task = None
         if task.done():
-            raise RuntimeError("Lifespan task errored:", task.exception())
+            try:
+                task_exception = task.exception()
+            except CancelledError:
+                return
+            if task_exception is not None:
+                raise RuntimeError("Lifespan task errored before shutdown.") from task_exception
+            return
 
         self.send_queue.put_nowait({"type": "lifespan.shutdown"})
         response = await self.receive_queue.get()
         match response.get("type"):
             case "lifespan.shutdown.complete":
-                ...
+                pass
             case "lifespan.shutdown.failed":
                 raise RuntimeError("Lifespan shutdown failed:", response.get("msg") or "")
+            case _:
+                raise RuntimeError("Lifespan shutdown failed: Unexpected shutdown response.")
+        try:
+            await task
+        except CancelledError:
+            return
+        except Exception as exc:
+            raise RuntimeError("Lifespan task errored during shutdown.") from exc
 
     async def __aexit__(
         self,
@@ -82,14 +170,25 @@ class Lifespan(Generic[BoundASGIApp]):
         exc_value: BaseException | None = None,
         traceback: TracebackType | None = None,
     ) -> None:
-        """Shutdown routine with optional timeout."""
+        """Exit context and trigger ASGI shutdown.
+
+        Args:
+            exc_type: Exception class raised in context body, if any.
+            exc_value: Exception instance raised in context body, if any.
+            traceback: Traceback object for the exception, if any.
+
+        Raises:
+            TimeoutError: If shutdown exceeds configured ``timeout``.
+            RuntimeError: If shutdown fails.
+        """
         if self.timeout:
             await wait_for(self.shutdown_raw(), self.timeout)
-        await self.shutdown_raw()
+        else:
+            await self.shutdown_raw()
 
 
 class MuteInteruptException(BaseException):
-    """Silent exception which is handled by LifespanHook."""
+    """Sentinel exception used to stop lifespan forwarding quietly."""
 
 
 @overload
@@ -116,11 +215,36 @@ def LifespanHook(
     setup: Callable[[], Awaitable[AsyncExitStack]] | None = None,
     do_forward: bool = True,
 ) -> BoundASGIApp | Callable[[BoundASGIApp], BoundASGIApp]:
-    """Helper for creating a library lifespan integration."""
+    """Wrap an ASGI app with optional setup/teardown hooks.
+
+    The wrapper can either:
+
+    - forward lifespan traffic to the underlying app (``do_forward=True``), or
+    - fully handle startup/shutdown completion messages itself
+      (``do_forward=False``).
+
+    Args:
+        app: Optional ASGI app to wrap. When ``None``, a decorator-style factory
+            is returned.
+        setup: Optional async callable returning an :class:`AsyncExitStack` used
+            for shutdown cleanup.
+        do_forward: Whether lifespan messages should be forwarded to the wrapped
+            app after setup/teardown interception.
+
+    Returns:
+        Wrapped ASGI application, or a decorator factory if ``app`` is ``None``.
+
+    Examples:
+        >>> wrapped = LifespanHook(app, setup=my_setup, do_forward=False)
+        >>> async with Lifespan(wrapped):
+        ...     pass
+
+    Notes:
+        Setup state is scoped to a single lifespan invocation. Reusing the same
+        wrapped app across multiple lifespan sessions is safe.
+    """
     if app is None:
         return partial(LifespanHook, setup=setup, do_forward=do_forward)
-
-    shutdown_stack: AsyncExitStack | None = None
 
     @wraps(app)
     async def app_wrapper(
@@ -129,7 +253,7 @@ def LifespanHook(
         send: Callable[[MutableMapping[str, Any]], Awaitable[None]],
     ) -> None:
         """Wraps the ASGI callable. Provides a forward."""
-        nonlocal shutdown_stack
+        shutdown_stack: AsyncExitStack | None = None
         # Check if the current scope is of type 'lifespan'.
         if scope["type"] == "lifespan":
             # Store the original receive callable to be used inside the wrapper.
@@ -160,9 +284,11 @@ def LifespanHook(
                     case "lifespan.shutdown":  # noqa: SIM102
                         # Check if the message type is for lifespan shutdown.
                         if shutdown_stack is not None:
+                            stack_to_close = shutdown_stack
+                            shutdown_stack = None
                             try:
                                 # Attempt to exit asynchronous context.
-                                await shutdown_stack.aclose()
+                                await stack_to_close.aclose()
                             except Exception as exc:
                                 # If an exception occurs during shutdown, send a failed
                                 # message to the ASGI server.

@@ -5,6 +5,7 @@
 .mypy_cache/
 .pytest_cache/
 .ruff
+.cache/
 .tox/
 .venv/
 venv/
@@ -13,6 +14,8 @@ __pycache__/
 virtualenv/
 build/
 dist/
+site/
+docs/generated/
 node_modules/
 results/
 

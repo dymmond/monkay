@@ -68,7 +68,7 @@ class DeprecatedImport(TypedDict, total=False):
     """The replacement attribute to use."""
 
 
-DeprecatedImport.__required_keys__ = frozenset({"deprecated"})
+DeprecatedImport.__required_keys__ = frozenset({"path"})
 
 
 class EvaluateSettingsParameters(TypedDict, total=False):

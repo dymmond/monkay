@@ -12,13 +12,15 @@ of lifespan.
 **Simple cli usage**
 
 ```python
-{!> ../docs_src/lifespan/Lifespan.py !}
+
+{!> ../../../../docs_src/lifespan/Lifespan.py !}
 ```
 
 **Testing**
 
 ```python
-{!> ../docs_src/lifespan/LifespanHookTesting.py !}
+
+{!> ../../../../docs_src/lifespan/LifespanHookTesting.py !}
 ```
 
 **ASGI Server**
@@ -26,7 +28,8 @@ of lifespan.
 If you want to add asgi lifespan support to an ASGI server you can do as well:
 
 ```python
-{!> ../docs_src/lifespan/Lifespan_server.py !}
+
+{!> ../../../../docs_src/lifespan/Lifespan_server.py !}
 ```
 
 ## `LifespanHook`
@@ -45,21 +48,24 @@ This is required for e.g. django, which still doesn't support lifespans.
 **Example library integration**
 
 ```python
-{!> ../docs_src/lifespan/LifespanHook.py !}
+
+{!> ../../../../docs_src/lifespan/LifespanHook.py !}
 ```
 
 **Example django**
 
 Django hasn't lifespan support yet. To use it with lifespan servers (and middleware) we can do something like this:
 ```python
-{!> ../docs_src/lifespan/LifespanHookDjango.py !}
+
+{!> ../../../../docs_src/lifespan/LifespanHookDjango.py !}
 ```
 
 **Example testing**
 
 You need a quick endpoint for lifespan? Here it is.
 ```python
-{!> ../docs_src/lifespan/LifespanHookTesting.py !}
+
+{!> ../../../../docs_src/lifespan/LifespanHookTesting.py !}
 ```
 
 ## Forwarded attributes feature of `LifespanHook`

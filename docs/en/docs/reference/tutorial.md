@@ -1,8 +1,3 @@
----
-hide:
-  - navigation
----
-
 # Tutorial
 
 **Monkay** simplifies dynamic imports, extension management, settings handling, and much more. This tutorial walks you through the essential steps for using **Monkay** in your projects.
@@ -26,7 +21,8 @@ pip install monkay
 Below is an example of how to set up **Monkay** in your project. You can use **Monkay** to manage dynamic imports, lazy loading, settings, extensions, and more.
 
 ```python title="foo/__init__.py"
-{!>../docs_src/tutorial/full_example_init.py}
+
+{!> ../../../../docs_src/tutorial/full_example_init.py}
 ```
 
 This configuration sets up **Monkay** with several features:
@@ -37,7 +33,8 @@ This configuration sets up **Monkay** with several features:
 - **Uncached imports** to prevent caching specific imports like settings.
 
 ```python title="foo/main.py"
-{!>../docs_src/tutorial/full_example_main.py}
+
+{!> ../../../../docs_src/tutorial/full_example_main.py}
 ```
 
 In `main.py`, the application is initialized by evaluating preloads and settings, ensuring that all required dependencies are loaded before use.

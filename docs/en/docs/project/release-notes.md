@@ -1,9 +1,26 @@
----
-hide:
-  - navigation
----
+# Release Notes
 
-# Release notes
+## 0.5.2
+
+### Added
+
+- Runtime validation for extension/settings conflict policy values.
+- Public API contract tests that lock exported symbols and call signatures.
+- Regression tests for TypedDict schema metadata and concurrent ASGI lifespan isolation.
+- Expanded documentation set: installation/compatibility, tutorials, error handling,
+  performance best practices, configuration reference, and FAQ.
+- `Taskfile.yml` alongside `Taskfile.yaml`, with standardized tasks:
+  `lint`, `format`, `typecheck`, `test`, `coverage`, `docs`, `docs:serve`, `clean`, `check`.
+
+### Changed
+
+- `LifespanHook` now scopes shutdown setup state per lifespan invocation.
+- README and documentation landing pages were reworked for clearer onboarding and navigation.
+
+### Fixed
+
+- `DeprecatedImport` TypedDict required-key metadata now correctly requires `path`.
+- Documentation now reflects valid `on_conflict` values (`error`, `keep`, `replace`).
 
 ## 0.5.1
 
@@ -59,26 +76,24 @@ hide:
 
 - When string or class is provided by a callable for settings it is parsed and cached.
   This allows lazy parsing of environment variables, so they can be changed programmatically.
-- Allow unsetting settings via with_settings by using False or "".
+- Allow unsetting settings via `with_settings` by using `False` or `""`.
 
 ## 0.3.0
 
-### Breaking
+### Changed
 
-This is an emergency release. It removes the feature that implicitly evaluates settings during `__init__`. This
-is very error prone and can lead to two different versions of the same library in case the sys.path is manipulated.
-Also failed imports are not neccessarily side-effect free.
+- Emergency release removing implicit settings evaluation during `__init__`.
+- `evaluate_settings` behaves like the previous `evaluate_settings_once`.
+- Setting the `evaluate_settings` parameter in `__init__` is now an error.
+- For `evaluate_settings(ignore_import_errors=...)`, the default changed to `False`.
 
 ### Added
 
-- `evaluate_settings` has now two extra keyword parameters: `onetime` and `ignore_preload_import_errors`.
+- `evaluate_settings` has two extra keyword parameters: `onetime` and `ignore_preload_import_errors`.
 
-### Changes
+### Deprecated
 
-- `evaluate_settings` behaves like `evaluate_settings_once`. We will need this too often now and having two similar named versions is error-prone.
-- `evaluate_settings_once` is now deprecated.
-- Setting the `evaluate_settings` parameter in `__init__` is now an error.
-- For the parameter `ignore_import_errors` of `evaluate_settings` the default value is changed to `False`.
+- `evaluate_settings_once` is deprecated.
 
 ## 0.2.2
 
@@ -103,22 +118,19 @@ Also failed imports are not neccessarily side-effect free.
 ### Added
 
 - Add `evaluate_settings_once`.
-- Add TransparentCage, which also exposes the ContextVar interface.
+- Add `TransparentCage`, which also exposes the `ContextVar` interface.
 - Add `monkay_` prefixed ContextVar-like attributes and methods.
 - Add optional `allow_value_update` to `monkay_with_override` method on cage.
 
 ### Changed
 
-- The Monkay `__init__` uses `evaluate_settings_once` instead `evaluate_settings`. This method is more lenient to import errors.
-  You should check the `settings_evaluated` flag and/or maybe call `evaluate_settings_once(ignore_import_errors=False)` in code pathes where extensions and/or
-  preloads are required.
-  You can also uncloak such errors by passing: `ignore_settings_import_errors=False`.
+- Monkay `__init__` uses `evaluate_settings_once` instead of `evaluate_settings`.
 - Deleting the settings via assignment now also invalidates the cache.
 
 ### Fixed
 
-- Assigning an empty dictionary to settings deletes the settings. This should only work for some falsy values.
-- Cage `with_overwrite` didn't escape the last update compontent properly.
+- Assigning an empty dictionary to settings deleted settings; now limited to supported falsy values.
+- Cage `with_overwrite` did not escape the last update component properly.
 
 ## 0.1.1
 
@@ -136,8 +148,8 @@ Also failed imports are not neccessarily side-effect free.
 
 ### Changed
 
-- Internals refactored. `base.py` is splitted now in multiple submodules.
-- Allow different settings than pydantic_settings.
+- Internals refactored. `base.py` is split now into multiple submodules.
+- Allow different settings than `pydantic_settings`.
 - Switch to semantic versioning.
 - Add cages (thread-safe, proxying contextvars).
 
@@ -160,14 +172,15 @@ Also failed imports are not neccessarily side-effect free.
 
 ### Added
 
-- Settings forwards
+- Settings forwards.
 - `settings_path` parameter has now more allowed value types.
 - Assignments to the settings attribute.
 - `with_` and `set_` operations returning set object.
 
 ### Changed
 
-- `settings_path=""` behaves now different (enables settings). The default switched to `None` (disabled settings).
+- `settings_path=""` behaves now different (enables settings).
+  The default switched to `None` (disabled settings).
 
 ### Removed
 
@@ -175,14 +188,14 @@ Also failed imports are not neccessarily side-effect free.
 
 ### Fixed
 
-- Use the right instance for apply_settings in set_instance.
+- Use the right instance for `apply_settings` in `set_instance`.
 
 ## 0.0.7
 
 ### Fixed
 
-- Missing py.typed.
-- Fix double dot in reason. This parameter alone should control the punctuation.
+- Missing `py.typed`.
+- Fix double dot in reason. This parameter alone should control punctuation.
 
 ## 0.0.6
 
@@ -195,12 +208,12 @@ Also failed imports are not neccessarily side-effect free.
 ### Added
 
 - `sorted_exports` for sorted `__all__` exports.
-- Hooks for add_lazy_import, add_deprecated_lazy_import.
+- Hooks for `add_lazy_import`, `add_deprecated_lazy_import`.
 
 ### Changed
 
 - `find_missing` test method has some different error names.
-- `find_missing` doesn't require the all_var anymore.
+- `find_missing` doesn't require `all_var` anymore.
 
 ## 0.0.4
 
@@ -228,4 +241,6 @@ Also failed imports are not neccessarily side-effect free.
 
 ## 0.0.1
 
-Initial release
+### Added
+
+- Initial release.
