@@ -233,11 +233,18 @@ def LifespanHook(
 
     Returns:
         Wrapped ASGI application, or a decorator factory if ``app`` is ``None``.
+
+    Examples:
+        >>> wrapped = LifespanHook(app, setup=my_setup, do_forward=False)
+        >>> async with Lifespan(wrapped):
+        ...     pass
+
+    Notes:
+        Setup state is scoped to a single lifespan invocation. Reusing the same
+        wrapped app across multiple lifespan sessions is safe.
     """
     if app is None:
         return partial(LifespanHook, setup=setup, do_forward=do_forward)
-
-    shutdown_stack: AsyncExitStack | None = None
 
     @wraps(app)
     async def app_wrapper(
@@ -246,7 +253,7 @@ def LifespanHook(
         send: Callable[[MutableMapping[str, Any]], Awaitable[None]],
     ) -> None:
         """Wraps the ASGI callable. Provides a forward."""
-        nonlocal shutdown_stack
+        shutdown_stack: AsyncExitStack | None = None
         # Check if the current scope is of type 'lifespan'.
         if scope["type"] == "lifespan":
             # Store the original receive callable to be used inside the wrapper.
@@ -277,9 +284,11 @@ def LifespanHook(
                     case "lifespan.shutdown":  # noqa: SIM102
                         # Check if the message type is for lifespan shutdown.
                         if shutdown_stack is not None:
+                            stack_to_close = shutdown_stack
+                            shutdown_stack = None
                             try:
                                 # Attempt to exit asynchronous context.
-                                await shutdown_stack.aclose()
+                                await stack_to_close.aclose()
                             except Exception as exc:
                                 # If an exception occurs during shutdown, send a failed
                                 # message to the ASGI server.

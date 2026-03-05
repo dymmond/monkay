@@ -17,9 +17,9 @@ hatch env create
 hatch env create docs
 ```
 
-## Quality Commands
+## Taskfile Workflow
 
-### Using Taskfile
+Monkay ships both `Taskfile.yml` and `Taskfile.yaml` for compatibility.
 
 ```shell
 task lint
@@ -27,10 +27,13 @@ task format
 task typecheck
 task test
 task coverage
-task release_checks
+task docs
+task docs:serve
+task clean
+task check
 ```
 
-### Using Hatch Directly
+## Hatch Equivalents
 
 ```shell
 hatch run lint
@@ -38,11 +41,13 @@ hatch run format
 hatch run check_types
 hatch test
 hatch test --cover
+hatch run docs:build
+hatch run docs:serve
 ```
 
-## Docs Workflow (Zensical)
+## Docs Workflow
 
-Prepare docs (expands include directives and examples):
+Prepare docs source expansion:
 
 ```shell
 hatch run docs:prepare
@@ -54,13 +59,13 @@ Build docs:
 hatch run docs:build
 ```
 
-Serve docs with live source refresh:
+Serve docs:
 
 ```shell
 hatch run docs:serve
 ```
 
-Verify `docs_src` snippets:
+Verify Python snippets under `docs_src`:
 
 ```shell
 hatch run docs:verify
@@ -69,6 +74,6 @@ hatch run docs:verify
 ## Pull Request Expectations
 
 1. Keep changes small and reviewable.
-2. Add tests for bug fixes and behavior changes.
-3. Keep public API backward-compatible unless a break is explicitly planned.
-4. Run `task release_checks` before opening or updating a PR.
+2. Add tests for behavior changes and bug fixes.
+3. Preserve public API compatibility.
+4. Run `task check` and `task docs` before opening/updating a PR.

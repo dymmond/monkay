@@ -1,86 +1,103 @@
-version: 3
+version: "3"
 
 tasks:
   activate:
-    desc: Activates the development shell
+    desc: Activate a Hatch-managed development shell.
     cmds:
       - hatch shell
 
   clean:
-    desc: Cleans pyc, pyi and pycache files
+    desc: Remove Python caches and generated docs artifacts.
     cmds:
       - hatch run clean_pyc
       - hatch run clean_pyi
       - hatch run clean_pycache
+      - hatch run docs:clean
 
   lint:
-    desc: Runs ruff checks
+    desc: Run Ruff lint checks.
     cmds:
       - hatch run lint
 
   format:
-    desc: Formats code with ruff and validates lint status
+    desc: Format and auto-fix with Ruff.
     cmds:
       - hatch run format
 
   ty:
-    desc: Runs ty type checker
+    desc: Run ty type checking (legacy alias).
     cmds:
-      - hatch run check_types
+      - task: typecheck
 
   typecheck:
-    desc: Runs ty against the Monkay package
+    desc: Run ty type checks.
     cmds:
       - hatch run check_types
 
   test:
-    desc: Runs test suite
+    desc: Run test suite.
     cmds:
       - hatch test {{ .ARGS }}
 
   coverage:
-    desc: Runs tests with coverage reporting
+    desc: Run tests with coverage output.
     cmds:
       - hatch test --cover {{ .ARGS }}
 
-  docs_prepare:
-    desc: Prepares docs tree for Zensical
-    cmds:
-      - hatch run docs:prepare
-
-  docs_clean:
-    desc: Cleans generated docs artifacts
-    cmds:
-      - hatch run docs:clean
-
-  docs_build:
-    desc: Builds docs with Zensical
+  docs:
+    desc: Build documentation site.
     cmds:
       - hatch run docs:build
 
-  build:
-    desc: Builds docs with Zensical (Lilya-style alias)
-    cmds:
-      - hatch run docs:build
-
-  docs_serve:
-    desc: Serves docs with Zensical
+  "docs:serve":
+    desc: Serve documentation with live refresh.
     cmds:
       - hatch run docs:serve
 
-  serve:
-    desc: Serves docs with Zensical (Lilya-style alias)
-    cmds:
-      - hatch run docs:serve
-
-  serve_dev:
-    desc: Serves docs in development mode (Lilya-style alias)
-    cmds:
-      - hatch run docs:dev
-
-  release_checks:
-    desc: Runs lint + typecheck + tests
+  check:
+    desc: Run CI-grade local checks (lint + typecheck + tests).
     cmds:
       - task: lint
       - task: typecheck
       - task: test
+
+  # Compatibility aliases for existing workflows
+  docs_prepare:
+    desc: Prepare docs source expansion.
+    cmds:
+      - hatch run docs:prepare
+
+  docs_clean:
+    desc: Clean docs artifacts only.
+    cmds:
+      - hatch run docs:clean
+
+  docs_build:
+    desc: Build docs (legacy alias).
+    cmds:
+      - task: docs
+
+  docs_serve:
+    desc: Serve docs (legacy alias).
+    cmds:
+      - task: "docs:serve"
+
+  build:
+    desc: Build docs (legacy alias).
+    cmds:
+      - task: docs
+
+  serve:
+    desc: Serve docs (legacy alias).
+    cmds:
+      - task: "docs:serve"
+
+  serve_dev:
+    desc: Serve docs in development mode.
+    cmds:
+      - hatch run docs:dev
+
+  release_checks:
+    desc: Run full quality checks (legacy alias).
+    cmds:
+      - task: check

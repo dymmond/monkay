@@ -169,3 +169,10 @@ def test_settings_overwrite_evaluate_no_conflict(transform):
     ) as new_settings:
         assert new_settings is not None
         mod.monkay.evaluate_settings(on_conflict="error", onetime=False)
+
+
+def test_evaluate_settings_rejects_unknown_conflict_mode():
+    import tests.targets.module_full as mod
+
+    with pytest.raises(ValueError, match='Invalid on_conflict: "warn"'):
+        mod.monkay.evaluate_settings(on_conflict="warn")  # type: ignore[arg-type]

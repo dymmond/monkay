@@ -65,6 +65,7 @@ nav:
   - index.md
   - Getting Started:
       - getting-started/index.md
+      - getting-started/installation-and-compatibility.md
       - getting-started/install-and-first-module.md
       - getting-started/first-production-run.md
   - Concepts:
@@ -72,13 +73,21 @@ nav:
       - concepts/module-lifecycle.md
       - concepts/settings-and-extensions.md
       - concepts/context-cages.md
+  - Tutorials:
+      - tutorials/index.md
+      - tutorials/build-first-module.md
+      - tutorials/settings-and-extensions.md
   - How-to Guides:
       - guides/index.md
       - guides/lazy-imports-and-deprecations.md
       - guides/testing-with-overrides.md
       - guides/asgi-lifespan-integration.md
+      - guides/error-handling.md
+      - guides/performance-best-practices.md
   - Reference:
       - reference/index.md
+      - reference/api.md
+      - reference/configuration.md
       - reference/tutorial.md
       - reference/helpers.md
       - reference/settings.md
@@ -86,10 +95,10 @@ nav:
       - reference/asgi.md
       - reference/specials.md
       - reference/testing.md
-      - reference/api.md
   - Project:
       - project/contributing.md
       - project/release-notes.md
+      - project/faq-troubleshooting.md
       - project/sponsorship.md
 
 markdown_extensions:

@@ -14,7 +14,7 @@ Use this checklist before shipping a Monkay-enabled package.
 Run all local gates:
 
 ```shell
-task release_checks
+task check
 ```
 
 Equivalent direct commands:

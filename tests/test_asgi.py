@@ -208,3 +208,38 @@ async def test_lifespan_shutdown_propagates_task_errors():
 
     with pytest.raises(RuntimeError, match="Lifespan task errored during shutdown"):
         await wrapped.__aexit__()
+
+
+async def test_lifespan_hook_setup_stack_is_isolated_per_concurrent_scope():
+    started = asyncio.Event()
+    release = asyncio.Event()
+    startup_count = 0
+    cleanup_calls: list[int] = []
+
+    async def helper_cleanup(token: int) -> None:
+        cleanup_calls.append(token)
+
+    async def helper_setup() -> AsyncExitStack:
+        nonlocal startup_count
+        startup_count += 1
+        token = startup_count
+        stack = AsyncExitStack()
+        stack.push_async_callback(helper_cleanup, token)
+        return stack
+
+    wrapped = LifespanHook(stub, setup=helper_setup, do_forward=False)
+
+    async def worker() -> None:
+        async with Lifespan(wrapped):
+            if startup_count == 2:
+                started.set()
+            await started.wait()
+            await release.wait()
+
+    task_a = asyncio.create_task(worker())
+    task_b = asyncio.create_task(worker())
+    await started.wait()
+    release.set()
+    await asyncio.gather(task_a, task_b)
+
+    assert sorted(cleanup_calls) == [1, 2]

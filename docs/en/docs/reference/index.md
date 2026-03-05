@@ -1,10 +1,14 @@
 # Reference
 
-Deep-dive behavior and API-oriented documentation.
+API-oriented and behavior-oriented documentation for Monkay.
 
-## Guides by Topic
+## Core API
 
-- [Tutorial](tutorial.md)
+- [API reference](api.md)
+- [Configuration reference](configuration.md)
+
+## By Subsystem
+
 - [Helpers](helpers.md)
 - [Settings](settings.md)
 - [Cages](cages.md)
@@ -12,6 +16,6 @@ Deep-dive behavior and API-oriented documentation.
 - [Specials](specials.md)
 - [Testing](testing.md)
 
-## API Index
+## Extended Narrative
 
-- [API reference](api.md)
+- [Tutorial-style reference](tutorial.md)

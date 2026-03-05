@@ -1,78 +1,107 @@
 # Monkay
 
-## What is Monkay?
+Monkay is a production-focused module lifecycle toolkit for Python packages.
+It helps you ship lazy imports, settings loading, extension orchestration, and
+context-isolated state without fragile import-time side effects.
 
-**Monkay** is a powerful tool designed to address common challenges in complex software projects, especially those that evolve over time. It’s built to solve issues such as deprecated names, lazy imports, side effects, and the need for dynamic extension support.
+## Why Monkay
 
-In large projects, particularly when working with frameworks like Django, application components need to interact in a modular way. **Monkay** facilitates this by allowing the easy registration of extensions, flexible import handling, and dynamic configuration of settings—all while ensuring that there are no dependency conflicts, and that extensions can build on each other smoothly.
+Monkay is designed for libraries and applications that need to:
 
-Some of the key features **Monkay** provides are:
-
-- **Lazy imports**: Minimize side effects and ensure efficient resource management.
-- **Self-registering extensions**: Similar to Django models, extensions can register themselves and be reordered without causing dependency issues.
-- **Thread-safety**: Handle multiple threads accessing different parts of the application, ensuring consistency and stability.
-- **Async-friendly testing**: Easily test applications with different settings and environments using **Monkay’s** context variables.
-- **Dynamic settings management**: Overwrite settings temporarily, similar to how Django handles configurations.
-
-With **Monkay**, testing becomes a breeze, and managing extensions and settings in dynamic, multithreaded applications is no longer a headache. It simplifies complex setups and allows you to focus on building rather than managing dependencies.
-
-If you're ready to dive deeper, check out our [Tutorial](https://monkay.dymmond.com/tutorial/) to get started.
-
----
+- expose stable public imports while deferring expensive imports,
+- run controlled startup preloads and settings evaluation,
+- apply pluggable extensions with deterministic conflict behavior,
+- isolate mutable state per thread/task for safe tests and request scopes,
+- validate module export consistency during development.
 
 ## Installation
-
-To get started with **Monkay**, follow these installation steps:
-
-### Step 1: Install Monkay
-
-You can install **Monkay** via **pip** from PyPI:
 
 ```shell
 pip install monkay
 ```
 
-### Step 2: Python Version Requirement
+Runtime requirement: **Python 3.10+**.
 
-**Monkay** requires Python 3.10 or later to function correctly. Ensure that you have the appropriate Python version installed:
+## 60-Second Example
 
-```shell
-python --version
+```python
+# yourpkg/__init__.py
+from monkay import Monkay
+
+monkay = Monkay(
+    globals(),
+    lazy_imports={
+        "json_dumps": "json:dumps",
+    },
+)
+
+__all__ = ["json_dumps", "monkay"]
 ```
 
-If your Python version is below 3.9, you will need to upgrade to a compatible version.
+```python
+# yourpkg/main.py
+from yourpkg import json_dumps
 
----
+payload = {"status": "ok"}
+print(json_dumps(payload))
+```
 
-## FAQ
+`json_dumps` is resolved lazily on first access and cached by default.
 
-### Why is Monkay called "Monkay"?
+## Core Capabilities
 
-Yes, **Monkay** is a playful variation of "monkey." Here's why:
+- `Monkay`: lifecycle coordinator for imports, settings, instances, and extensions
+- `load`, `load_any`, `absolutify_import`: import/path helpers
+- `Cage`, `TransparentCage`: context-isolated mutable proxies
+- `Lifespan`, `LifespanHook`: ASGI lifespan utilities
+- `find_missing`, `sorted_exports`: export inspection and debugging helpers
 
-- **Unique and Memorable**: The name **Monkay** stands out and is easy to remember.
-- **Trademark Issues**: "Monkey" is already widely used, so we opted for something distinct while still keeping the playful theme.
+## Public API Stability
 
-So, while it may look like a typo, it's entirely intentional—and a bit of fun too!
+Monkay keeps top-level public imports stable via `monkay.__all__`:
 
+- `Monkay`
+- `DeprecatedImport`
+- `PRE_ADD_LAZY_IMPORT_HOOK`
+- `ExtensionProtocol`
+- `load`, `load_any`, `absolutify_import`
+- `InGlobalsDict`, `UnsetError`, `get_value_from_settings`
+- `Cage`, `TransparentCage`
 
-## Links
+## Documentation
 
-[Documentation](https://monkay.dymmond.com)
+Full docs: [monkay.dymmond.com](https://monkay.dymmond.com)
+
+Recommended order:
+
+1. [Getting Started](https://monkay.dymmond.com/getting-started/)
+2. [Tutorials](https://monkay.dymmond.com/tutorials/)
+3. [Concepts](https://monkay.dymmond.com/concepts/)
+4. [How-to Guides](https://monkay.dymmond.com/guides/)
+5. [Reference](https://monkay.dymmond.com/reference/)
 
 ## Development Quickstart
 
-Monkay uses `hatch`, `ruff`, and `ty`.
+Monkay uses **hatch**, **ruff**, **ty**, **pytest**, and **mkdocs/zensical**.
 
 ```shell
 pip install hatch
 hatch run lint
 hatch run check_types
 hatch test
+hatch run docs:build
 ```
 
-If you use [Task](https://taskfile.dev), Monkay also ships a `Taskfile.yaml`:
+If you use [Task](https://taskfile.dev), Monkay ships both `Taskfile.yml` and `Taskfile.yaml`:
 
 ```shell
-task release_checks
+task check
+task coverage
+task docs
+task docs:serve
 ```
+
+## Contributing
+
+See [Contributing](https://monkay.dymmond.com/project/contributing/) for setup,
+quality gates, docs workflow, and pull request expectations.
