@@ -10,14 +10,75 @@ This module provides two production-oriented helpers:
 
 from asyncio import CancelledError, Queue, Task, create_task, wait_for
 from collections.abc import Awaitable, Callable, MutableMapping
-from contextlib import AsyncExitStack, suppress
+from contextlib import (
+    AbstractAsyncContextManager,
+    AbstractContextManager,
+    AsyncExitStack,
+    suppress,
+)
 from functools import partial, wraps
+from inspect import isawaitable
 from types import TracebackType
 from typing import Any, Generic, TypeVar, cast, overload
 
 from .types import ASGIApp
 
 BoundASGIApp = TypeVar("BoundASGIApp", bound=ASGIApp)
+
+_scope_type = MutableMapping[str, Any]
+_cm_types = AbstractAsyncContextManager | AbstractContextManager
+
+
+@overload
+def CMToASGIMiddleware(
+    app: BoundASGIApp,
+    *,
+    cm: (_cm_types | Callable[[_scope_type], _cm_types | Awaitable[_cm_types]]),
+) -> BoundASGIApp: ...
+
+
+@overload
+def CMToASGIMiddleware(
+    app: None,
+    *,
+    cm: (_cm_types | Callable[[_scope_type], _cm_types | Awaitable[_cm_types]]),
+) -> Callable[[BoundASGIApp], BoundASGIApp]: ...
+
+
+def CMToASGIMiddleware(
+    app: BoundASGIApp | None = None,
+    *,
+    cm: (_cm_types | Callable[[_scope_type], _cm_types | Awaitable[_cm_types]]),
+):
+    """Transform ContextManager to middleware.
+
+    Args:
+        app: ASGI application callable or None (default) for generating decorator.
+        cm: Async/Sync ContextManager or callable returning it.
+    """
+    if app is None:
+        return partial(CMToASGIMiddleware, cm=cm)
+
+    @wraps(app)
+    async def app_wrapper(
+        scope: _scope_type,
+        receive: Callable[[], Awaitable[_scope_type]],
+        send: Callable[[_scope_type], Awaitable[None]],
+    ) -> None:
+        _cm = cm
+        # callable
+        if not (hasattr(_cm, "__aenter__") or hasattr(_cm, "__enter__")):
+            _cm = _cm(scope)
+            if isawaitable(_cm):
+                _cm = await _cm
+        if hasattr(_cm, "__aenter__"):
+            async with _cm:
+                await app(scope, receive, send)
+        else:
+            with _cm:
+                await app(scope, receive, send)
+
+    return app_wrapper
 
 
 class Lifespan(Generic[BoundASGIApp]):
@@ -334,8 +395,4 @@ def LifespanHook(
     return cast(BoundASGIApp, app_wrapper)
 
 
-__all__ = [
-    "Lifespan",
-    "LifespanHook",
-    "ASGIApp",
-]
+__all__ = ["CMToASGIMiddleware", "Lifespan", "LifespanHook", "ASGIApp", "MuteInteruptException"]

@@ -3,6 +3,33 @@
 Given that monkay is used from a bunch of libraries which hook into ASGI lifespans,
 we have also some ASGI helpers.
 
+## `CMToASGIMiddleware`
+
+Transforms a `ContextManager` (async/sync) to an ASGI-Middleware. This is quite handy if you want to manipulate the `ContextVar`s
+and inject e.g. a database but only for a part of the ASGI monolith.
+You can also provide an async/sync `Callable`, which receives the scope and is expected to return a `ContextManager` (async/sync).
+
+!!! Note
+    When a `ContextManager` is also callable, it is still treated as `ContextManager` (neccessary for compatibility). If you want it to be called,
+    use `lambda scope: callable_cm(scope)`.
+
+**Edgy Example**
+
+Here we wrap an app with edgy.
+```python
+{!> ../../../../docs_src/asgi/cm/basic.py !}
+```
+
+Why is `asgi(...)` not enough?
+We only manipulate the lifespan protocol with asgi, but don't set the instance.
+
+!!! Note
+    `return_cm` is a callable which returns the contextmanager, so generate one on the fly
+
+
+This is only one example. We can do much more by injecting ContextManager as middleware or generating them. No need to program boilerplate code anymore for this.
+
+
 ## `Lifespan`
 
 Wraps an asgi application as `AsyncContextManager` and run the lifespan protocol. You can optionally provide an `timeout` parameter.
@@ -13,14 +40,14 @@ of lifespan.
 
 ```python
 
-{!> ../../../../docs_src/lifespan/Lifespan.py !}
+{!> ../../../../docs_src/asgi/lifespan/Lifespan.py !}
 ```
 
 **Testing**
 
 ```python
 
-{!> ../../../../docs_src/lifespan/LifespanHookTesting.py !}
+{!> ../../../../docs_src/asgi/lifespan/LifespanHookTesting.py !}
 ```
 
 **ASGI Server**
@@ -29,7 +56,7 @@ If you want to add asgi lifespan support to an ASGI server you can do as well:
 
 ```python
 
-{!> ../../../../docs_src/lifespan/Lifespan_server.py !}
+{!> ../../../../docs_src/asgi/lifespan/Lifespan_server.py !}
 ```
 
 ## `LifespanHook`
@@ -49,7 +76,7 @@ This is required for e.g. django, which still doesn't support lifespans.
 
 ```python
 
-{!> ../../../../docs_src/lifespan/LifespanHook.py !}
+{!> ../../../../docs_src/asgi/lifespan/LifespanHook.py !}
 ```
 
 **Example django**
@@ -57,7 +84,7 @@ This is required for e.g. django, which still doesn't support lifespans.
 Django hasn't lifespan support yet. To use it with lifespan servers (and middleware) we can do something like this:
 ```python
 
-{!> ../../../../docs_src/lifespan/LifespanHookDjango.py !}
+{!> ../../../../docs_src/asgi/lifespan/LifespanHookDjango.py !}
 ```
 
 **Example testing**
@@ -65,7 +92,7 @@ Django hasn't lifespan support yet. To use it with lifespan servers (and middlew
 You need a quick endpoint for lifespan? Here it is.
 ```python
 
-{!> ../../../../docs_src/lifespan/LifespanHookTesting.py !}
+{!> ../../../../docs_src/asgi/lifespan/LifespanHookTesting.py !}
 ```
 
 ## Forwarded attributes feature of `LifespanHook`

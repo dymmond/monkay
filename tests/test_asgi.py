@@ -1,11 +1,12 @@
 import asyncio
 from collections.abc import Awaitable, Callable, MutableMapping
-from contextlib import AsyncExitStack
+from contextlib import AsyncExitStack, asynccontextmanager, contextmanager
+from contextvars import ContextVar
 from typing import Any
 
 import pytest
 
-from monkay.asgi import Lifespan, LifespanHook
+from monkay.asgi import CMToASGIMiddleware, Lifespan, LifespanHook
 
 pytestmark = pytest.mark.anyio
 
@@ -34,6 +35,19 @@ async def stub_empty(
     receive: Callable[[], Awaitable[MutableMapping[str, Any]]],
     send: Callable[[MutableMapping[str, Any]], Awaitable[None]],
 ) -> None: ...
+
+
+cv = ContextVar("cv")
+
+
+async def stub_check_context_var(
+    scope: MutableMapping[str, Any],
+    receive: Callable[[], Awaitable[MutableMapping[str, Any]]],
+    send: Callable[[MutableMapping[str, Any]], Awaitable[None]],
+) -> None:
+    cv.set(cv.get() + 1)
+    d = await receive()
+    await send({"cv": cv.get(), **d})
 
 
 @pytest.mark.parametrize("probe", [stub, stub_empty, stub_raise])
@@ -243,3 +257,95 @@ async def test_lifespan_hook_setup_stack_is_isolated_per_concurrent_scope():
     await asyncio.gather(task_a, task_b)
 
     assert sorted(cleanup_calls) == [1, 2]
+
+
+async def execute_app(app: Any, scope: Any = None, message: Any = None):
+    send_queue: asyncio.Queue[MutableMapping[str, Any]] = asyncio.Queue()
+    receive_queue: asyncio.Queue[MutableMapping[str, Any]] = asyncio.Queue()
+    await receive_queue.put(message or {})
+    await app(scope or {}, receive_queue.get, send_queue.put)
+    return send_queue.get_nowait()
+
+
+async def test_cm_to_middleware_direct_sync():
+    retrieved = None
+
+    @contextmanager
+    def cm():
+        nonlocal retrieved
+        token = cv.set(0)
+        try:
+            yield
+        finally:
+            retrieved = cv.get()
+            cv.reset(token)
+
+    app = CMToASGIMiddleware(stub_check_context_var, cm=cm())
+    assert await execute_app(app) == {"cv": 1}
+
+    assert retrieved == 1
+
+
+async def test_cm_to_middleware_direct_async():
+    retrieved = None
+
+    @asynccontextmanager
+    async def cm():
+        nonlocal retrieved
+        token = cv.set(0)
+        try:
+            yield
+        finally:
+            retrieved = cv.get()
+            cv.reset(token)
+
+    app = CMToASGIMiddleware(stub_check_context_var, cm=cm())
+    assert await execute_app(app) == {"cv": 1}
+
+    assert retrieved == 1
+
+
+async def test_cm_to_middleware_fn_sync():
+    retrieved = None
+
+    def func(scope):
+        assert scope == {"foo": 1}
+
+        @contextmanager
+        def cm():
+            nonlocal retrieved
+            token = cv.set(0)
+            try:
+                yield
+            finally:
+                retrieved = cv.get()
+                cv.reset(token)
+
+        return cm()
+
+    app = CMToASGIMiddleware(stub_check_context_var, cm=func)
+    assert await execute_app(app, {"foo": 1}, {"foo2": 2}) == {"cv": 1, "foo2": 2}
+    assert retrieved == 1
+
+
+async def test_cm_to_middleware_fn_async():
+    retrieved = None
+
+    async def cm_caller(scope):
+        assert scope == {"foo": 1}
+
+        @asynccontextmanager
+        async def cm():
+            nonlocal retrieved
+            token = cv.set(0)
+            try:
+                yield
+            finally:
+                retrieved = cv.get()
+                cv.reset(token)
+
+        return cm()
+
+    app = CMToASGIMiddleware(stub_check_context_var, cm=cm_caller)
+    assert await execute_app(app, {"foo": 1}, {"foo2": 2}) == {"cv": 1, "foo2": 2}
+    assert retrieved == 1
