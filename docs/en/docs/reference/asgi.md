@@ -24,7 +24,7 @@ Why is `asgi(...)` not enough?
 We only manipulate the lifespan protocol with asgi, but don't set the instance.
 
 !!! Note
-    `return_cm` is a callable which returns the contextmanager, so generate one on the fly
+    `return_cm` is a callable which returns a contextmanager. This is a way to generate a contextmanager every request.
 
 
 This is only one example. We can do much more by injecting ContextManager as middleware or generating them. No need to program boilerplate code anymore for this.
