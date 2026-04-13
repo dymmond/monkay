@@ -72,10 +72,12 @@ def CMToASGIMiddleware(
             if isawaitable(_cm):
                 _cm = await _cm
         if hasattr(_cm, "__aenter__"):
-            async with _cm:
+            # will fail when not an AbstractAsyncContextManager (no aexit), so safe
+            async with cast(AbstractAsyncContextManager, _cm):
                 await app(scope, receive, send)
         else:
-            with _cm:
+            # will fail when not an AbstractContextManager (no exit), so safe
+            with cast(AbstractContextManager, _cm):
                 await app(scope, receive, send)
 
     return app_wrapper
