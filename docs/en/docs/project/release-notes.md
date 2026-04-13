@@ -1,5 +1,17 @@
 # Release Notes
 
+
+## 0.5.3
+
+### Added
+
+- `CMToASGIMiddleware` to transform contextmanager into ASGI middleware.
+
+### Fixed
+
+- Export of `MuteInterruptException`.
+- Fix spelling of `MuteInterruptException` the old name is still available.
+
 ## 0.5.2
 
 ### Added

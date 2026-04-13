@@ -122,7 +122,13 @@ def test_top_level_exports_resolve_expected_symbols() -> None:
 
 
 def test_public_submodule_exports_are_stable() -> None:
-    assert asgi.__all__ == ["Lifespan", "LifespanHook", "ASGIApp"]
+    assert asgi.__all__ == [
+        "CMToASGIMiddleware",
+        "Lifespan",
+        "LifespanHook",
+        "ASGIApp",
+        "MuteInterruptException",
+    ]
 
 
 def test_monkay_constructor_signature_is_stable() -> None:

@@ -250,8 +250,11 @@ class Lifespan(Generic[BoundASGIApp]):
             await self.shutdown_raw()
 
 
-class MuteInteruptException(BaseException):
+class MuteInterruptException(BaseException):
     """Sentinel exception used to stop lifespan forwarding quietly."""
+
+
+MuteInteruptException = MuteInterruptException
 
 
 @overload
@@ -343,7 +346,7 @@ def LifespanHook(
                                 await send({"type": "lifespan.startup.failed", "msg": str(exc)})
                                 # Raise a custom exception to stop further lifespan
                                 # processing for this event.
-                                raise MuteInteruptException from None
+                                raise MuteInterruptException from None
                     case "lifespan.shutdown":  # noqa: SIM102
                         # Check if the message type is for lifespan shutdown.
                         if shutdown_stack is not None:
@@ -358,16 +361,16 @@ def LifespanHook(
                                 await send({"type": "lifespan.shutdown.failed", "msg": str(exc)})
                                 # Raise a custom exception to stop further lifespan
                                 # processing for this event.
-                                raise MuteInteruptException from None
+                                raise MuteInterruptException from None
                 # Return the original message after processing.
                 return message
 
             # If `handle_lifespan` is True, this helper will fully manage
             # the lifespan protocol, including sending 'complete' messages.
             if not do_forward:
-                # Suppress the MuteInteruptException to gracefully stop
+                # Suppress the MuteInterruptException to gracefully stop
                 # the lifespan loop without uncaught exceptions.
-                with suppress(MuteInteruptException):
+                with suppress(MuteInterruptException):
                     # Continuously receive and process lifespan messages.
                     while True:
                         # Await the next lifespan message.
@@ -386,9 +389,9 @@ def LifespanHook(
         # For any scope type other than 'lifespan', or if handle_lifespan
         # is False (meaning the original app will handle 'complete' messages),
         # or after the lifespan handling is complete, call the original ASGI app.
-        # Suppress MuteInteruptException in case it was raised by the
+        # Suppress MuteInterruptException in case it was raised by the
         # modified receive callable and propagated here.
-        with suppress(MuteInteruptException):
+        with suppress(MuteInterruptException):
             await app(scope, receive, send)
 
     # forward attributes
@@ -397,4 +400,4 @@ def LifespanHook(
     return cast(BoundASGIApp, app_wrapper)
 
 
-__all__ = ["CMToASGIMiddleware", "Lifespan", "LifespanHook", "ASGIApp", "MuteInteruptException"]
+__all__ = ["CMToASGIMiddleware", "Lifespan", "LifespanHook", "ASGIApp", "MuteInterruptException"]
