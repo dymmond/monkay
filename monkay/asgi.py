@@ -251,10 +251,7 @@ class Lifespan(Generic[BoundASGIApp]):
 
 
 class MuteInterruptException(BaseException):
-    """Sentinel exception used to stop lifespan forwarding quietly."""
-
-
-MuteInteruptException = MuteInterruptException
+    """Sentinel exception used to stop lifespan forwarding quietly. Internal"""
 
 
 @overload
@@ -400,4 +397,4 @@ def LifespanHook(
     return cast(BoundASGIApp, app_wrapper)
 
 
-__all__ = ["CMToASGIMiddleware", "Lifespan", "LifespanHook", "ASGIApp", "MuteInterruptException"]
+__all__ = ["CMToASGIMiddleware", "Lifespan", "LifespanHook", "ASGIApp"]

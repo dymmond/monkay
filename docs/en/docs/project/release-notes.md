@@ -9,8 +9,7 @@
 
 ### Fixed
 
-- Export of `MuteInterruptException`.
-- Fix spelling of `MuteInterruptException` the old name is still available.
+- Fix spelling of `MuteInterruptException` (internal used).
 
 ## 0.5.2
 

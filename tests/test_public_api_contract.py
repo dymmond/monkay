@@ -127,7 +127,6 @@ def test_public_submodule_exports_are_stable() -> None:
         "Lifespan",
         "LifespanHook",
         "ASGIApp",
-        "MuteInterruptException",
     ]
 
 
