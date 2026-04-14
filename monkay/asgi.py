@@ -251,7 +251,7 @@ class Lifespan(Generic[BoundASGIApp]):
 
 
 class MuteInterruptException(BaseException):
-    """Sentinel exception used to stop lifespan forwarding quietly. Internal"""
+    """Sentinel exception used to stop lifespan forwarding quietly. Internal."""
 
 
 @overload
