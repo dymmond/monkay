@@ -10,14 +10,77 @@ This module provides two production-oriented helpers:
 
 from asyncio import CancelledError, Queue, Task, create_task, wait_for
 from collections.abc import Awaitable, Callable, MutableMapping
-from contextlib import AsyncExitStack, suppress
+from contextlib import (
+    AbstractAsyncContextManager,
+    AbstractContextManager,
+    AsyncExitStack,
+    suppress,
+)
 from functools import partial, wraps
+from inspect import isawaitable
 from types import TracebackType
 from typing import Any, Generic, TypeVar, cast, overload
 
 from .types import ASGIApp
 
 BoundASGIApp = TypeVar("BoundASGIApp", bound=ASGIApp)
+
+_scope_type = MutableMapping[str, Any]
+_cm_types = AbstractAsyncContextManager | AbstractContextManager
+
+
+@overload
+def CMToASGIMiddleware(
+    app: BoundASGIApp,
+    *,
+    cm: (_cm_types | Callable[[_scope_type], _cm_types | Awaitable[_cm_types]]),
+) -> BoundASGIApp: ...
+
+
+@overload
+def CMToASGIMiddleware(
+    app: None,
+    *,
+    cm: (_cm_types | Callable[[_scope_type], _cm_types | Awaitable[_cm_types]]),
+) -> Callable[[BoundASGIApp], BoundASGIApp]: ...
+
+
+def CMToASGIMiddleware(
+    app: BoundASGIApp | None = None,
+    *,
+    cm: (_cm_types | Callable[[_scope_type], _cm_types | Awaitable[_cm_types]]),
+):
+    """Transform ContextManager to middleware.
+
+    Args:
+        app: ASGI application callable or None (default) for generating decorator.
+        cm: Async/Sync ContextManager or callable returning it.
+    """
+    if app is None:
+        return partial(CMToASGIMiddleware, cm=cm)
+
+    @wraps(app)
+    async def app_wrapper(
+        scope: _scope_type,
+        receive: Callable[[], Awaitable[_scope_type]],
+        send: Callable[[_scope_type], Awaitable[None]],
+    ) -> None:
+        _cm = cm
+        # callable
+        if not (hasattr(_cm, "__aenter__") or hasattr(_cm, "__enter__")):
+            _cm = _cm(scope)
+            if isawaitable(_cm):
+                _cm = await _cm
+        if hasattr(_cm, "__aenter__"):
+            # will fail when not an AbstractAsyncContextManager (no aexit), so safe
+            async with cast(AbstractAsyncContextManager, _cm):
+                await app(scope, receive, send)
+        else:
+            # will fail when not an AbstractContextManager (no exit), so safe
+            with cast(AbstractContextManager, _cm):
+                await app(scope, receive, send)
+
+    return app_wrapper
 
 
 class Lifespan(Generic[BoundASGIApp]):
@@ -187,8 +250,8 @@ class Lifespan(Generic[BoundASGIApp]):
             await self.shutdown_raw()
 
 
-class MuteInteruptException(BaseException):
-    """Sentinel exception used to stop lifespan forwarding quietly."""
+class MuteInterruptException(BaseException):
+    """Sentinel exception used to stop lifespan forwarding quietly. Internal."""
 
 
 @overload
@@ -280,7 +343,7 @@ def LifespanHook(
                                 await send({"type": "lifespan.startup.failed", "msg": str(exc)})
                                 # Raise a custom exception to stop further lifespan
                                 # processing for this event.
-                                raise MuteInteruptException from None
+                                raise MuteInterruptException from None
                     case "lifespan.shutdown":  # noqa: SIM102
                         # Check if the message type is for lifespan shutdown.
                         if shutdown_stack is not None:
@@ -295,16 +358,16 @@ def LifespanHook(
                                 await send({"type": "lifespan.shutdown.failed", "msg": str(exc)})
                                 # Raise a custom exception to stop further lifespan
                                 # processing for this event.
-                                raise MuteInteruptException from None
+                                raise MuteInterruptException from None
                 # Return the original message after processing.
                 return message
 
             # If `handle_lifespan` is True, this helper will fully manage
             # the lifespan protocol, including sending 'complete' messages.
             if not do_forward:
-                # Suppress the MuteInteruptException to gracefully stop
+                # Suppress the MuteInterruptException to gracefully stop
                 # the lifespan loop without uncaught exceptions.
-                with suppress(MuteInteruptException):
+                with suppress(MuteInterruptException):
                     # Continuously receive and process lifespan messages.
                     while True:
                         # Await the next lifespan message.
@@ -323,9 +386,9 @@ def LifespanHook(
         # For any scope type other than 'lifespan', or if handle_lifespan
         # is False (meaning the original app will handle 'complete' messages),
         # or after the lifespan handling is complete, call the original ASGI app.
-        # Suppress MuteInteruptException in case it was raised by the
+        # Suppress MuteInterruptException in case it was raised by the
         # modified receive callable and propagated here.
-        with suppress(MuteInteruptException):
+        with suppress(MuteInterruptException):
             await app(scope, receive, send)
 
     # forward attributes
@@ -334,8 +397,4 @@ def LifespanHook(
     return cast(BoundASGIApp, app_wrapper)
 
 
-__all__ = [
-    "Lifespan",
-    "LifespanHook",
-    "ASGIApp",
-]
+__all__ = ["CMToASGIMiddleware", "Lifespan", "LifespanHook", "ASGIApp"]
